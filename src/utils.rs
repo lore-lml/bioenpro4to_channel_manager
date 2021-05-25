@@ -1,0 +1,24 @@
+use chrono::{Local, NaiveDateTime, Datelike};
+
+pub fn current_time_millis() -> i64{
+    Local::now().timestamp_millis()
+}
+
+pub fn current_time_secs() -> i64{
+    Local::now().timestamp()
+}
+
+pub fn timestamp_to_date(timestamp: i64, millis: bool) -> NaiveDateTime{
+    let (sec, nsec): (i64, u32) = if millis{
+        (timestamp / 1000, (timestamp % 1000) as u32 * 1000000)
+    }else{
+        (timestamp, 0)
+    };
+    NaiveDateTime::from_timestamp(sec, nsec)
+}
+
+pub fn timestamp_to_date_string(timestamp: i64, millis: bool) -> String{
+    let date = timestamp_to_date(timestamp, millis);
+    format!("{:02}/{:02}/{}", date.day(), date.month(), date.year())
+}
+
