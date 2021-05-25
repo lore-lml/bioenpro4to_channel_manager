@@ -41,6 +41,14 @@ impl Category{
             (_, _) => false
         }
     }
+
+    pub fn to_string(&self) -> String{
+        match self{
+            Category::Trucks => "trucks".to_string(),
+            Category::Scales => "weighing_scales".to_string(),
+            Category::BioCells => "biocells".to_string()
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -1,6 +1,7 @@
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::{Category, create_channel, ChannelInfo};
 use crate::utils::{current_time_secs, timestamp_to_date_string};
+use chrono::NaiveDate;
 
 pub struct DailyChannel{
     category: Category,
@@ -16,9 +17,24 @@ impl DailyChannel{
         DailyChannel { category, actor_id: actor_id.to_lowercase(), channel, creation_timestamp}
     }
 
+    pub fn new_in_date(category: Category, actor_id: &str, day: u16, month: u16, year: u16, mainnet: bool) -> anyhow::Result<Self>{
+        let mut ch = DailyChannel::new(category, actor_id, mainnet);
+        let date = match NaiveDate::from_ymd(year as i32, month as u32, day as u32)
+            .and_hms_opt(0, 0, 0){
+            None => return Err(anyhow::Error::msg("Invalid date")),
+            Some(date) => date
+        };
+        ch.creation_timestamp = date.timestamp();
+        Ok(ch)
+    }
+
     pub async fn open(&mut self, state_psw: &str) -> anyhow::Result<ChannelInfo>{
         let info = self.channel.open_and_save(state_psw).await?;
         Ok(ChannelInfo::new(info.0, info.1))
+    }
+
+    pub fn creation_timestamp(&self) -> i64 {
+        self.creation_timestamp
     }
 
     pub fn creation_date(&self) -> String{

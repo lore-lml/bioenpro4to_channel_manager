@@ -1,6 +1,30 @@
 use crate::channels::{Category, create_channel, ChannelInfo};
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::actor_channel::ActorChannel;
+use serde::{Serialize, Deserialize};
+use iota_streams_lib::payload::payload_serializers::JsonPacketBuilder;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct ActorChannelMsg{
+    address: ChannelInfo,
+    category: String,
+    actor_id: String,
+}
+
+impl ActorChannelMsg{
+    pub fn new(address: ChannelInfo, category: Category, actor_id: &str) -> Self {
+        ActorChannelMsg { address, category: category.to_string(), actor_id: actor_id.to_lowercase() }
+    }
+    pub fn address(&self) -> &ChannelInfo {
+        &self.address
+    }
+    pub fn category(&self) -> &str {
+        &self.category
+    }
+    pub fn actor_id(&self) -> &str {
+        &self.actor_id
+    }
+}
 
 pub struct CategoryChannel{
     category: Category,
@@ -66,8 +90,19 @@ impl CategoryChannel{
             return Err(anyhow::Error::msg("Actor channel with this id already exist"));
         }
         let mut actor_channel = ActorChannel::new(self.category.clone(), actor_id, self.mainnet);
-        actor_channel.open(state_psw).await?;
+        let info = actor_channel.open(state_psw).await?;
         self.actors.push(actor_channel);
+
+        self.publish_actor_channel(info, actor_id).await?;
+        Ok(())
+    }
+
+    async fn publish_actor_channel(&mut self, info: ChannelInfo, actor_id: &str) -> anyhow::Result<()>{
+        let msg = ActorChannelMsg::new(info, self.category.clone(), actor_id);
+        let packet = JsonPacketBuilder::new()
+            .public(&msg)?
+            .build();
+        self.channel.send_signed_packet(&packet).await?;
         Ok(())
     }
 }

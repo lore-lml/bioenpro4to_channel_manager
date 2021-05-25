@@ -2,7 +2,35 @@ use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::daily_channel::DailyChannel;
 use crate::channels::{Category, create_channel, ChannelInfo};
 use crate::utils::{current_time_secs, timestamp_to_date};
-use chrono::{NaiveDate, Datelike};
+use chrono::Datelike;
+use iota_streams_lib::payload::payload_serializers::JsonPacketBuilder;
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct DailyChannelMsg{
+    address: ChannelInfo,
+    category: String,
+    actor_id: String,
+    creation_timestamp: i64,
+}
+
+impl DailyChannelMsg{
+    pub fn new(address: ChannelInfo, category: Category, actor_id: &str, creation_timestamp: i64) -> Self {
+        DailyChannelMsg { address, category: category.to_string(), actor_id: actor_id.to_lowercase(), creation_timestamp }
+    }
+    pub fn address(&self) -> &ChannelInfo {
+        &self.address
+    }
+    pub fn category(&self) -> &str {
+        &self.category
+    }
+    pub fn actor_id(&self) -> &str {
+        &self.actor_id
+    }
+    pub fn creation_timestamp(&self) -> i64 {
+        self.creation_timestamp
+    }
+}
 
 pub struct ActorChannel{
     category: Category,
@@ -24,12 +52,6 @@ impl ActorChannel{
     }
 
     pub async fn create_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<ChannelInfo>{
-        match NaiveDate::from_ymd(year as i32, month as u32, day as u32)
-            .and_hms_opt(0, 0, 0){
-            None => return Err(anyhow::Error::msg("Invalid date")),
-            _ => {}
-        };
-
         let date_string = format!("{:02}/{:02}/{}", day, month, year);
         let found = self.daily_channels.iter()
             .filter(|ch| { date_string == ch.creation_date() })
@@ -38,9 +60,16 @@ impl ActorChannel{
             return Err(anyhow::Error::msg(format!("Daily channel already exist in date {}", date_string)));
         }
 
-        let mut daily_channel = DailyChannel::new(self.category.clone(), self.actor_id(), self.mainnet);
+        let mut daily_channel = DailyChannel::new_in_date(
+            self.category.clone(), self.actor_id(),
+            day, month, year,
+            self.mainnet
+        )?;
+
+        let timestamp = daily_channel.creation_timestamp();
         let info = daily_channel.open(state_psw).await?;
         self.daily_channels.push(daily_channel);
+        self.publish_daily_channel(info.clone(), timestamp).await?;
         Ok(info)
     }
 
@@ -64,6 +93,17 @@ impl ActorChannel{
 
         self.daily_channels.iter().for_each(|ch| ch.print_nested_channel_info());
         println!();
+    }
+}
+
+impl ActorChannel{
+    async fn publish_daily_channel(&mut self, info: ChannelInfo, timestamp: i64) -> anyhow::Result<()>{
+        let msg = DailyChannelMsg::new(info, self.category.clone(), self.actor_id(), timestamp);
+        let packet = JsonPacketBuilder::new()
+            .public(&msg)?
+            .build();
+        self.channel.send_signed_packet(&packet).await?;
+        Ok(())
     }
 }
 
