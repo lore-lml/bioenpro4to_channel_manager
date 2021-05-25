@@ -1,6 +1,7 @@
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
-use iota_streams_lib::channel::builders::channel_builders::ChannelWriterBuilder;
+use iota_streams_lib::channel::builders::channel_builders::{ChannelWriterBuilder, ChannelReaderBuilder};
 use serde::{Serialize, Deserialize};
+use iota_streams_lib::channel::tangle_channel_reader::ChannelReader;
 
 pub mod daily_channel;
 pub mod root_channel;
@@ -52,19 +53,6 @@ impl Category{
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CategoryChannelsInfo{
-    pub trucks: ChannelInfo,
-    pub weighing_scale: ChannelInfo,
-    pub biocell: ChannelInfo,
-}
-
-impl CategoryChannelsInfo{
-    pub fn new(trucks: ChannelInfo, weighing_scale: ChannelInfo, biocell: ChannelInfo) -> Self{
-        CategoryChannelsInfo{ trucks, weighing_scale, biocell }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChannelInfo{
     pub channel_id: String,
     pub announce_id: String,
@@ -81,4 +69,11 @@ pub fn create_channel(mainnet: bool) -> ChannelWriter{
         return ChannelWriterBuilder::new().node("https://chrysalis-nodes.iota.cafe/").build();
     }
     ChannelWriterBuilder::new().build()
+}
+
+pub fn create_reader(channel_id: &str, announce_id: &str, mainnet:bool) -> ChannelReader{
+    if mainnet{
+        return ChannelReaderBuilder::new().node("https://chrysalis-nodes.iota.cafe/").build(channel_id, announce_id);
+    }
+    ChannelReaderBuilder::new().build(channel_id, announce_id)
 }

@@ -1,9 +1,9 @@
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::daily_channel::DailyChannel;
-use crate::channels::{Category, create_channel, ChannelInfo};
+use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use crate::utils::{current_time_secs, timestamp_to_date};
 use chrono::Datelike;
-use iota_streams_lib::payload::payload_serializers::JsonPacketBuilder;
+use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,6 +44,30 @@ impl ActorChannel{
     pub fn new(category: Category, actor_id: &str, mainnet: bool) -> Self {
         let channel = create_channel(mainnet);
         ActorChannel { category, actor_id: actor_id.to_lowercase(), channel, daily_channels: vec![], mainnet }
+    }
+
+    pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, actor_id: &str, mainnet: bool) -> anyhow::Result<Self>{
+        let node = if mainnet{
+            Some("https://chrysalis-nodes.iota.cafe/")
+        }else{
+            None
+        };
+        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, node, None).await?;
+        let daily_info = ActorChannel::read_daily_channels_info(channel_id, announce_id, mainnet).await?;
+        let mut daily_channels = vec![];
+        for d in daily_info {
+            let ch = DailyChannel::import_from_tangle(
+                &d.address.channel_id,
+                &d.address.announce_id,
+                state_psw,
+                category.clone(),
+                actor_id,
+                d.creation_timestamp(),
+                mainnet
+            ).await?;
+            daily_channels.push(ch)
+        }
+        Ok( ActorChannel{category, actor_id: actor_id.to_lowercase(), channel, daily_channels, mainnet } )
     }
 
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
@@ -104,6 +128,17 @@ impl ActorChannel{
             .build();
         self.channel.send_signed_packet(&packet).await?;
         Ok(())
+    }
+
+    async fn read_daily_channels_info(channel_id: &str, announce_id: &str, mainnet: bool) -> anyhow::Result<Vec<DailyChannelMsg>>{
+        let mut reader = create_reader(channel_id, announce_id, mainnet);
+        reader.attach().await?;
+        let msgs: Vec<(String, JsonPacket)> = reader.fetch_parsed_msgs(&None).await?;
+        let mut daily_ch_info = vec![];
+        for (_, m) in msgs {
+            daily_ch_info.push(m.deserialize_public()?)
+        }
+        Ok(daily_ch_info)
     }
 }
 

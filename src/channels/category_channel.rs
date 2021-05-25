@@ -1,8 +1,8 @@
-use crate::channels::{Category, create_channel, ChannelInfo};
+use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::actor_channel::ActorChannel;
 use serde::{Serialize, Deserialize};
-use iota_streams_lib::payload::payload_serializers::JsonPacketBuilder;
+use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActorChannelMsg{
@@ -39,12 +39,32 @@ impl CategoryChannel {
         CategoryChannel { category, channel, actors: vec![], mainnet }
     }
 
+    pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, mainnet: bool) -> anyhow::Result<Self>{
+        let node = if mainnet{
+            Some("https://chrysalis-nodes.iota.cafe/")
+        }else{
+            None
+        };
+        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, node, None).await?;
+        let actors_info = CategoryChannel::read_actors_channels_info(channel_id, announce_id, mainnet).await?;
+        let mut actors = vec![];
+        for a in actors_info {
+            let ch = ActorChannel::import_from_tangle(
+                &a.address.channel_id,
+                &a.address.announce_id,
+                state_psw,
+                category.clone(),
+                a.actor_id(),
+                mainnet).await?;
+            actors.push(ch);
+        }
+        Ok( CategoryChannel{ category, channel, actors, mainnet } )
+    }
+
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
         let info = self.channel.open_and_save(channel_psw).await?;
         Ok(ChannelInfo::new(info.0, info.1))
     }
-
-
 
     pub fn category(&self) -> &Category {
         &self.category
@@ -104,5 +124,16 @@ impl CategoryChannel{
             .build();
         self.channel.send_signed_packet(&packet).await?;
         Ok(())
+    }
+
+    async fn read_actors_channels_info(channel_id: &str, announce_id: &str, mainnet: bool) -> anyhow::Result<Vec<ActorChannelMsg>>{
+        let mut reader = create_reader(channel_id, announce_id, mainnet);
+        reader.attach().await?;
+        let msgs: Vec<(String, JsonPacket)> = reader.fetch_parsed_msgs(&None).await?;
+        let mut actors = vec![];
+        for (_, m) in msgs {
+            actors.push(m.deserialize_public()?);
+        }
+        Ok(actors)
     }
 }

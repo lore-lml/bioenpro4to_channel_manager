@@ -28,6 +28,17 @@ impl DailyChannel{
         Ok(ch)
     }
 
+    pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category,
+                                    actor_id: &str, creation_timestamp: i64, mainnet: bool) -> anyhow::Result<Self>{
+        let node = if mainnet{
+            Some("https://chrysalis-nodes.iota.cafe/")
+        }else{
+            None
+        };
+        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, node, None).await?;
+        Ok(DailyChannel{ category, actor_id: actor_id.to_lowercase(), channel, creation_timestamp })
+    }
+
     pub async fn open(&mut self, state_psw: &str) -> anyhow::Result<ChannelInfo>{
         let info = self.channel.open_and_save(state_psw).await?;
         Ok(ChannelInfo::new(info.0, info.1))

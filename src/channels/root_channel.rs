@@ -1,8 +1,21 @@
 use crate::channels::category_channel::CategoryChannel;
-use crate::channels::{Category, create_channel, CategoryChannelsInfo, ChannelInfo};
+use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
-use iota_streams_lib::payload::payload_serializers::JsonPacketBuilder;
+use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CategoryChannelsInfo{
+    pub trucks: ChannelInfo,
+    pub weighing_scale: ChannelInfo,
+    pub biocell: ChannelInfo,
+}
+
+impl CategoryChannelsInfo{
+    pub fn new(trucks: ChannelInfo, weighing_scale: ChannelInfo, biocell: ChannelInfo) -> Self{
+        CategoryChannelsInfo{ trucks, weighing_scale, biocell }
+    }
+}
 
 pub struct RootChannel{
     root: ChannelWriter,
@@ -19,6 +32,31 @@ impl RootChannel{
         let biocell_category = CategoryChannel::new(Category::BioCells, mainnet);
         let root = create_channel(mainnet);
         RootChannel { root, truck_category, weighing_scale_category, biocell_category }
+    }
+
+    pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, mainnet: bool) -> anyhow::Result<Self>{
+        let node = if mainnet{
+            Some("https://chrysalis-nodes.iota.cafe/")
+        }else{
+            None
+        };
+        let root = ChannelWriter::import_from_tangle(
+            channel_id,
+            announce_id,
+            state_psw,
+            node,
+            None
+        ).await?;
+
+        let categories_info = RootChannel::read_categories_channels_info(channel_id, announce_id, mainnet).await?;
+        let categories = RootChannel::import_categories(categories_info, state_psw, mainnet).await?;
+
+        Ok(RootChannel{
+            root,
+            truck_category: categories.0,
+            weighing_scale_category: categories.1,
+            biocell_category: categories.2,
+        })
     }
 
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
@@ -48,7 +86,6 @@ impl RootChannel{
 
     pub async fn create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
                                                 day: u16, month: u16, year: u16) -> anyhow::Result<ChannelInfo>{
-
         match category{
             Category::Trucks => self.truck_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
             Category::Scales => self.weighing_scale_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
@@ -64,11 +101,51 @@ impl RootChannel{
 
     pub fn print_nested_channel_info(&self){
         let info = self.channel_info();
-        println!("Root = {}:{}", info.channel_id, info.announce_id);
+        println!("Root = {}:{}\n", info.channel_id, info.announce_id);
 
         self.truck_category.print_nested_channel_info();
         self.weighing_scale_category.print_nested_channel_info();
         self.biocell_category.print_nested_channel_info();
         println!();
+    }
+}
+
+impl RootChannel {
+    async fn read_categories_channels_info(channel_id: &str, announce_id: &str, mainnet: bool) -> anyhow::Result<CategoryChannelsInfo>{
+        let mut reader = create_reader(channel_id, announce_id, mainnet);
+        reader.attach().await?;
+        let mut msgs: Vec<(String, JsonPacket)> = reader.fetch_parsed_msgs(&None).await?;
+        match msgs.pop(){
+            None => Err(anyhow::Error::msg("Error during parsing categories channels")),
+            Some((_, packet)) => packet.deserialize_public()
+        }
+    }
+
+    async fn import_categories(categories_info: CategoryChannelsInfo, state_psw: &str, mainnet: bool) -> anyhow::Result<(CategoryChannel, CategoryChannel, CategoryChannel)>{
+        let truck_category = CategoryChannel::import_from_tangle(
+            &categories_info.trucks.channel_id,
+            &categories_info.trucks.announce_id,
+            state_psw,
+            Category::Trucks,
+            mainnet
+        ).await?;
+
+        let weighing_scale_category = CategoryChannel::import_from_tangle(
+            &categories_info.weighing_scale.channel_id,
+            &categories_info.weighing_scale.announce_id,
+            state_psw,
+            Category::Scales,
+            mainnet
+        ).await?;
+
+        let biocell_category = CategoryChannel::import_from_tangle(
+            &categories_info.biocell.channel_id,
+            &categories_info.biocell.announce_id,
+            state_psw,
+            Category::BioCells,
+            mainnet
+        ).await?;
+
+        Ok((truck_category, weighing_scale_category, biocell_category))
     }
 }
