@@ -20,11 +20,12 @@ impl Message{
 async fn test_create_nested_channels(state_psw: &str, mainnet: bool, key_nonce: Option<([u8; 32],[u8; 24])>) -> anyhow::Result<ChannelInfo>{
     let mut root = RootChannel::new(mainnet);
     let info = root.open(state_psw).await?;
-    let mut daily_ch = root.create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25,5,2021).await?;
-    root.create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 26,5,2021).await?;
-    root.create_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 25,5,2021).await?;
-    root.create_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 28,5,2021).await?;
+    root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
+    root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 26, 5, 2021).await?;
+    root.get_or_create_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 25, 5, 2021).await?;
+    root.get_or_create_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 28, 5, 2021).await?;
 
+    let mut daily_ch = root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
     let public = Message::new("PUBLIC MESSAGE").to_json()?;
     let private = Message::new("PRIVATE MESSAGE").to_json()?;
     daily_ch.send_raw_packet(public, private, key_nonce).await?;
@@ -41,7 +42,11 @@ async fn test_restore_nested_channels(info: ChannelInfo, state_psw: &str, mainne
         state_psw,
         mainnet
     ).await?;
-    root.create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 27,5,2021).await?;
+    root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 27, 5, 2021).await?;
+    let mut daily_ch = root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
+    let public = Message::new("PUBLIC MESSAGE").to_json()?;
+    let private = Message::new("PRIVATE MESSAGE").to_json()?;
+    daily_ch.send_raw_packet(public, private, key_nonce).await?;
     root.print_nested_channel_info();
     Ok(())
 }

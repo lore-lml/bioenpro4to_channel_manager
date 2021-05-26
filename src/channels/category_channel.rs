@@ -1,11 +1,8 @@
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
-use crate::channels::actor_channel::ActorChannel;
+use crate::channels::actor_channel::{ActorChannel, DailyChannelManager};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
-use std::rc::Rc;
-use std::cell::RefCell;
-use crate::channels::daily_channel::DailyChannel;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActorChannelMsg{
@@ -14,6 +11,7 @@ struct ActorChannelMsg{
     actor_id: String,
 }
 
+#[allow(dead_code)]
 impl ActorChannelMsg{
     pub fn new(address: ChannelInfo, category: Category, actor_id: &str) -> Self {
         ActorChannelMsg { address, category: category.to_string(), actor_id: actor_id.to_lowercase() }
@@ -36,6 +34,7 @@ pub struct CategoryChannel{
     mainnet: bool
 }
 
+#[allow(dead_code)]
 impl CategoryChannel {
     pub fn new(category: Category, mainnet: bool) -> Self {
         let channel = create_channel(mainnet);
@@ -73,16 +72,15 @@ impl CategoryChannel {
         &self.category
     }
 
-    pub async fn create_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
-                                            day: u16, month: u16, year: u16) -> anyhow::Result<Rc<RefCell<DailyChannel>>>{
+    pub async fn get_or_create_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
+                                                   day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         if !exist{
             self.create_actor_channel(actor_id, state_psw).await?;
         }
         self.actors.iter_mut()
             .find(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase()).unwrap()
-            .create_daily_channel_in_date(state_psw, day, month, year).await
-
+            .get_or_create_daily_channel_in_date(state_psw, day, month, year).await
     }
 
     pub fn channel_info(&self) -> ChannelInfo{
@@ -98,7 +96,7 @@ impl CategoryChannel {
             Category::BioCells => "BioCells"
         };
 
-        println!("  {} = {}:{}", category, info.channel_id, info.announce_id);
+        println!("|--{} = {}:{}", category, info.channel_id, info.announce_id);
         self.actors.iter().for_each(|a| a.print_nested_channel_info());
     }
 }

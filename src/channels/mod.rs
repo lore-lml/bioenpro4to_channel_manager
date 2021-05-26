@@ -6,7 +6,7 @@ use iota_streams_lib::channel::tangle_channel_reader::ChannelReader;
 pub mod root_channel;
 mod category_channel;
 mod actor_channel;
-mod daily_channel;
+pub mod daily_channel;
 
 #[derive(Clone)]
 pub enum Category{

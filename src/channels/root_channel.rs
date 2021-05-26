@@ -3,9 +3,7 @@ use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
-use std::rc::Rc;
-use std::cell::RefCell;
-use crate::channels::daily_channel::DailyChannel;
+use crate::channels::actor_channel::DailyChannelManager;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
@@ -25,6 +23,7 @@ pub struct RootChannel{
     truck_category: CategoryChannel,
     weighing_scale_category: CategoryChannel,
     biocell_category: CategoryChannel,
+    mainnet: bool
 }
 
 
@@ -37,7 +36,7 @@ impl RootChannel{
         let weighing_scale_category = CategoryChannel::new(Category::Scales, mainnet);
         let biocell_category = CategoryChannel::new(Category::BioCells, mainnet);
         let root = create_channel(mainnet);
-        RootChannel { root, truck_category, weighing_scale_category, biocell_category }
+        RootChannel { root, truck_category, weighing_scale_category, biocell_category, mainnet }
     }
 
     //
@@ -65,6 +64,7 @@ impl RootChannel{
             truck_category: categories.0,
             weighing_scale_category: categories.1,
             biocell_category: categories.2,
+            mainnet
         })
     }
 
@@ -86,14 +86,13 @@ impl RootChannel{
     //
     // Create the daily channel for a given actor of a certain category for the specified date
     //
-    pub async fn create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
-                                                day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
-        let daily_ch = match category{
-            Category::Trucks => self.truck_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await?,
-            Category::Scales => self.weighing_scale_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await?,
-            Category::BioCells => self.biocell_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await?
-        };
-        Ok(DailyChannelManager::new(daily_ch))
+    pub async fn get_or_create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
+                                                   day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+        match category{
+            Category::Trucks => self.truck_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
+            Category::Scales => self.weighing_scale_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
+            Category::BioCells => self.biocell_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await
+        }
     }
 
     //
@@ -102,6 +101,13 @@ impl RootChannel{
     pub fn channel_info(&self) -> ChannelInfo{
         let info = self.root.channel_address();
         ChannelInfo::new(info.0, info.1)
+    }
+
+    //
+    // Tells if the root channel is attached to the mainnet or not
+    //
+    pub fn is_mainnet(&self) -> bool{
+        self.mainnet
     }
 
     //
@@ -169,31 +175,5 @@ impl RootChannel {
         ).await?;
 
         Ok((truck_category, weighing_scale_category, biocell_category))
-    }
-}
-
-pub struct DailyChannelManager{
-    daily_channel: Rc<RefCell<DailyChannel>>,
-}
-
-impl DailyChannelManager {
-    fn new(daily_channel: Rc<RefCell<DailyChannel>>) -> Self {
-        DailyChannelManager { daily_channel }
-    }
-
-    pub async fn send_raw_packet(&mut self, p_data: Vec<u8>, m_data: Vec<u8>, key_nonce: Option<([u8;32], [u8;24])>) -> anyhow::Result<String>{
-        self.daily_channel.borrow_mut().send_raw_packet(p_data, m_data, key_nonce).await
-    }
-
-    pub fn creation_timestamp(&self) -> i64 {
-        self.daily_channel.borrow().creation_timestamp()
-    }
-
-    pub fn creation_date(&self) -> String{
-        self.daily_channel.borrow().creation_date()
-    }
-
-    pub fn channel_info(&self) -> ChannelInfo{
-        self.daily_channel.borrow().channel_info()
     }
 }
