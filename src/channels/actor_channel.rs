@@ -5,6 +5,8 @@ use crate::utils::{current_time_secs, timestamp_to_date};
 use chrono::Datelike;
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct DailyChannelMsg{
@@ -36,7 +38,7 @@ pub struct ActorChannel{
     category: Category,
     actor_id: String,
     channel: ChannelWriter,
-    daily_channels: Vec<DailyChannel>,
+    daily_channels: Vec<Rc<RefCell<DailyChannel>>>,
     mainnet: bool,
 }
 
@@ -65,7 +67,7 @@ impl ActorChannel{
                 d.creation_timestamp(),
                 mainnet
             ).await?;
-            daily_channels.push(ch)
+            daily_channels.push(Rc::new(RefCell::new(ch)));
         }
         Ok( ActorChannel{category, actor_id: actor_id.to_lowercase(), channel, daily_channels, mainnet } )
     }
@@ -75,10 +77,10 @@ impl ActorChannel{
         Ok(ChannelInfo::new(info.0, info.1))
     }
 
-    pub async fn create_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<ChannelInfo>{
+    pub async fn create_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<Rc<RefCell<DailyChannel>>>{
         let date_string = format!("{:02}/{:02}/{}", day, month, year);
         let found = self.daily_channels.iter()
-            .filter(|ch| { date_string == ch.creation_date() })
+            .filter(|ch| { date_string == ch.borrow().creation_date() })
             .count();
         if found > 0{
             return Err(anyhow::Error::msg(format!("Daily channel already exist in date {}", date_string)));
@@ -92,12 +94,13 @@ impl ActorChannel{
 
         let timestamp = daily_channel.creation_timestamp();
         let info = daily_channel.open(state_psw).await?;
-        self.daily_channels.push(daily_channel);
-        self.publish_daily_channel(info.clone(), timestamp).await?;
-        Ok(info)
+        let res = Rc::new(RefCell::new(daily_channel));
+        self.daily_channels.push(res.clone());
+        self.publish_daily_channel(info, timestamp).await?;
+        Ok(res)
     }
 
-    pub async fn create_daily_channel(&mut self, state_psw: &str) -> anyhow::Result<ChannelInfo>{
+    pub async fn create_daily_channel(&mut self, state_psw: &str) -> anyhow::Result<Rc<RefCell<DailyChannel>>>{
         let date = timestamp_to_date(current_time_secs(), false);
         self.create_daily_channel_in_date(state_psw, date.day() as u16, date.month() as u16, date.year() as u16).await
     }
@@ -115,8 +118,7 @@ impl ActorChannel{
         let info = self.channel_info();
         println!("      Actor {} = {}:{}", self.actor_id, info.channel_id, info.announce_id);
 
-        self.daily_channels.iter().for_each(|ch| ch.print_nested_channel_info());
-        println!();
+        self.daily_channels.iter().for_each(|ch| ch.borrow().print_nested_channel_info());
     }
 }
 

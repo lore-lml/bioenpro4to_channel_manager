@@ -3,6 +3,9 @@ use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
+use std::rc::Rc;
+use std::cell::RefCell;
+use crate::channels::daily_channel::DailyChannel;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
@@ -26,6 +29,9 @@ pub struct RootChannel{
 
 
 impl RootChannel{
+    //
+    // Build the Root Channel of the nested channel architecture of BioEnPro4To project
+    //
     pub fn new(mainnet: bool) -> Self {
         let truck_category = CategoryChannel::new(Category::Trucks, mainnet);
         let weighing_scale_category = CategoryChannel::new(Category::Scales, mainnet);
@@ -34,6 +40,9 @@ impl RootChannel{
         RootChannel { root, truck_category, weighing_scale_category, biocell_category }
     }
 
+    //
+    // Restore the entire nested architecture giving the address of the root channel and the password previously used for the encryption of the state
+    //
     pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, mainnet: bool) -> anyhow::Result<Self>{
         let node = if mainnet{
             Some("https://chrysalis-nodes.iota.cafe/")
@@ -59,6 +68,9 @@ impl RootChannel{
         })
     }
 
+    //
+    // Initialize and opens the first two layers of the nested architecture
+    //
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
         // Opening Channels Category Info
         self.truck_category.open(channel_psw).await?;
@@ -67,10 +79,47 @@ impl RootChannel{
 
         // Opening the root channel
         let root_info = self.root.open_and_save(channel_psw).await?;
+        self.init_categories().await?;
         Ok(ChannelInfo::new(root_info.0, root_info.1))
     }
 
-    pub async fn init_categories(&mut self) -> anyhow::Result<()>{
+    //
+    // Create the daily channel for a given actor of a certain category for the specified date
+    //
+    pub async fn create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
+                                                day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+        let daily_ch = match category{
+            Category::Trucks => self.truck_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await?,
+            Category::Scales => self.weighing_scale_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await?,
+            Category::BioCells => self.biocell_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await?
+        };
+        Ok(DailyChannelManager::new(daily_ch))
+    }
+
+    //
+    // Returns the channel info of the root channel
+    //
+    pub fn channel_info(&self) -> ChannelInfo{
+        let info = self.root.channel_address();
+        ChannelInfo::new(info.0, info.1)
+    }
+
+    //
+    // Print all the architecture in a hierarchical view
+    //
+    pub fn print_nested_channel_info(&self){
+        let info = self.channel_info();
+        println!("Root = {}:{}", info.channel_id, info.announce_id);
+
+        self.truck_category.print_nested_channel_info();
+        self.weighing_scale_category.print_nested_channel_info();
+        self.biocell_category.print_nested_channel_info();
+        println!();
+    }
+}
+
+impl RootChannel {
+    async fn init_categories(&mut self) -> anyhow::Result<()>{
         let truck_info = self.truck_category.channel_info();
         let scale_info = self.weighing_scale_category.channel_info();
         let biocell_info = self.biocell_category.channel_info();
@@ -84,33 +133,6 @@ impl RootChannel{
         Ok(())
     }
 
-    pub async fn create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
-                                                day: u16, month: u16, year: u16) -> anyhow::Result<ChannelInfo>{
-        match category{
-            Category::Trucks => self.truck_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
-            Category::Scales => self.weighing_scale_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
-            Category::BioCells => self.biocell_category.create_daily_actor_channel(actor_id, state_psw, day, month, year).await
-        }
-
-    }
-
-    pub fn channel_info(&self) -> ChannelInfo{
-        let info = self.root.channel_address();
-        ChannelInfo::new(info.0, info.1)
-    }
-
-    pub fn print_nested_channel_info(&self){
-        let info = self.channel_info();
-        println!("Root = {}:{}\n", info.channel_id, info.announce_id);
-
-        self.truck_category.print_nested_channel_info();
-        self.weighing_scale_category.print_nested_channel_info();
-        self.biocell_category.print_nested_channel_info();
-        println!();
-    }
-}
-
-impl RootChannel {
     async fn read_categories_channels_info(channel_id: &str, announce_id: &str, mainnet: bool) -> anyhow::Result<CategoryChannelsInfo>{
         let mut reader = create_reader(channel_id, announce_id, mainnet);
         reader.attach().await?;
@@ -147,5 +169,31 @@ impl RootChannel {
         ).await?;
 
         Ok((truck_category, weighing_scale_category, biocell_category))
+    }
+}
+
+pub struct DailyChannelManager{
+    daily_channel: Rc<RefCell<DailyChannel>>,
+}
+
+impl DailyChannelManager {
+    fn new(daily_channel: Rc<RefCell<DailyChannel>>) -> Self {
+        DailyChannelManager { daily_channel }
+    }
+
+    pub async fn send_raw_packet(&mut self, p_data: Vec<u8>, m_data: Vec<u8>, key_nonce: Option<([u8;32], [u8;24])>) -> anyhow::Result<String>{
+        self.daily_channel.borrow_mut().send_raw_packet(p_data, m_data, key_nonce).await
+    }
+
+    pub fn creation_timestamp(&self) -> i64 {
+        self.daily_channel.borrow().creation_timestamp()
+    }
+
+    pub fn creation_date(&self) -> String{
+        self.daily_channel.borrow().creation_date()
+    }
+
+    pub fn channel_info(&self) -> ChannelInfo{
+        self.daily_channel.borrow().channel_info()
     }
 }

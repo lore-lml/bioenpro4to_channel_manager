@@ -3,10 +3,10 @@ use iota_streams_lib::channel::builders::channel_builders::{ChannelWriterBuilder
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::channel::tangle_channel_reader::ChannelReader;
 
-pub mod daily_channel;
 pub mod root_channel;
-pub mod category_channel;
-pub mod actor_channel;
+mod category_channel;
+mod actor_channel;
+mod daily_channel;
 
 #[derive(Clone)]
 pub enum Category{
@@ -54,24 +54,31 @@ impl Category{
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChannelInfo{
-    pub channel_id: String,
-    pub announce_id: String,
+    channel_id: String,
+    announce_id: String,
 }
 
 impl ChannelInfo{
     pub fn new(channel_id: String, announce_id: String) -> Self {
         ChannelInfo { channel_id, announce_id }
     }
+
+    pub fn channel_id(&self) -> &str {
+        &self.channel_id
+    }
+    pub fn announce_id(&self) -> &str {
+        &self.announce_id
+    }
 }
 
-pub fn create_channel(mainnet: bool) -> ChannelWriter{
+fn create_channel(mainnet: bool) -> ChannelWriter{
     if mainnet{
         return ChannelWriterBuilder::new().node("https://chrysalis-nodes.iota.cafe/").build();
     }
     ChannelWriterBuilder::new().build()
 }
 
-pub fn create_reader(channel_id: &str, announce_id: &str, mainnet:bool) -> ChannelReader{
+fn create_reader(channel_id: &str, announce_id: &str, mainnet:bool) -> ChannelReader{
     if mainnet{
         return ChannelReaderBuilder::new().node("https://chrysalis-nodes.iota.cafe/").build(channel_id, announce_id);
     }

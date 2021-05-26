@@ -3,6 +3,9 @@ use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::actor_channel::ActorChannel;
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
+use std::rc::Rc;
+use std::cell::RefCell;
+use crate::channels::daily_channel::DailyChannel;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActorChannelMsg{
@@ -71,7 +74,7 @@ impl CategoryChannel {
     }
 
     pub async fn create_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
-                                            day: u16, month: u16, year: u16) -> anyhow::Result<ChannelInfo>{
+                                            day: u16, month: u16, year: u16) -> anyhow::Result<Rc<RefCell<DailyChannel>>>{
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         if !exist{
             self.create_actor_channel(actor_id, state_psw).await?;
@@ -97,7 +100,6 @@ impl CategoryChannel {
 
         println!("  {} = {}:{}", category, info.channel_id, info.announce_id);
         self.actors.iter().for_each(|a| a.print_nested_channel_info());
-        println!();
     }
 }
 

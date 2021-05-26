@@ -44,6 +44,10 @@ impl DailyChannel{
         Ok(ChannelInfo::new(info.0, info.1))
     }
 
+    pub async fn send_raw_packet(&mut self, p_data: Vec<u8>, m_data: Vec<u8>, key_nonce: Option<([u8;32], [u8;24])>) -> anyhow::Result<String>{
+        self.channel.send_signed_raw_data(p_data, m_data, key_nonce).await
+    }
+
     pub fn creation_timestamp(&self) -> i64 {
         self.creation_timestamp
     }
