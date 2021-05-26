@@ -8,13 +8,13 @@ use crate::channels::actor_channel::DailyChannelManager;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
     pub trucks: ChannelInfo,
-    pub weighing_scale: ChannelInfo,
-    pub biocell: ChannelInfo,
+    pub weighing_scales: ChannelInfo,
+    pub biocells: ChannelInfo,
 }
 
 impl CategoryChannelsInfo{
     pub fn new(trucks: ChannelInfo, weighing_scale: ChannelInfo, biocell: ChannelInfo) -> Self{
-        CategoryChannelsInfo{ trucks, weighing_scale, biocell }
+        CategoryChannelsInfo{ trucks, weighing_scales: weighing_scale, biocells: biocell }
     }
 }
 
@@ -48,6 +48,7 @@ impl RootChannel{
         }else{
             None
         };
+        println!("Importing tree");
         let root = ChannelWriter::import_from_tangle(
             channel_id,
             announce_id,
@@ -55,6 +56,7 @@ impl RootChannel{
             node,
             None
         ).await?;
+        println!("  Root imported");
 
         let categories_info = RootChannel::read_categories_channels_info(channel_id, announce_id, mainnet).await?;
         let categories = RootChannel::import_categories(categories_info, state_psw, mainnet).await?;
@@ -73,10 +75,13 @@ impl RootChannel{
     //
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
         // Opening Channels Category Info
+        println!("Initializing channels...");
         self.truck_category.open(channel_psw).await?;
+        println!("  Trucks tree initialized");
         self.weighing_scale_category.open(channel_psw).await?;
+        println!("  Scales tree initialized");
         self.biocell_category.open(channel_psw).await?;
-
+        println!("  Biocells tree initialized");
         // Opening the root channel
         let root_info = self.root.open_and_save(channel_psw).await?;
         self.init_categories().await?;
@@ -88,11 +93,14 @@ impl RootChannel{
     //
     pub async fn get_or_create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
                                                    day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
-        match category{
+        println!("Getting/Creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
+        let res = match category{
             Category::Trucks => self.truck_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
             Category::Scales => self.weighing_scale_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
             Category::BioCells => self.biocell_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await
-        }
+        };
+        println!("  Getting/Creation complete");
+        res
     }
 
     //
@@ -115,7 +123,7 @@ impl RootChannel{
     //
     pub fn print_nested_channel_info(&self){
         let info = self.channel_info();
-        println!("Root = {}:{}", info.channel_id, info.announce_id);
+        println!("\nRoot = {}:{}", info.channel_id, info.announce_id);
 
         self.truck_category.print_nested_channel_info();
         self.weighing_scale_category.print_nested_channel_info();
@@ -126,6 +134,7 @@ impl RootChannel{
 
 impl RootChannel {
     async fn init_categories(&mut self) -> anyhow::Result<()>{
+        println!("Initializing tree messages...");
         let truck_info = self.truck_category.channel_info();
         let scale_info = self.weighing_scale_category.channel_info();
         let biocell_info = self.biocell_category.channel_info();
@@ -136,6 +145,7 @@ impl RootChannel {
             .public(&categories_info)?
             .build();
         self.root.send_signed_packet(&packet).await?;
+        println!("  Initial messages sent");
         Ok(())
     }
 
@@ -150,6 +160,7 @@ impl RootChannel {
     }
 
     async fn import_categories(categories_info: CategoryChannelsInfo, state_psw: &str, mainnet: bool) -> anyhow::Result<(CategoryChannel, CategoryChannel, CategoryChannel)>{
+        println!("Importing categories...");
         let truck_category = CategoryChannel::import_from_tangle(
             &categories_info.trucks.channel_id,
             &categories_info.trucks.announce_id,
@@ -157,23 +168,23 @@ impl RootChannel {
             Category::Trucks,
             mainnet
         ).await?;
-
+        println!("  Trucks imported");
         let weighing_scale_category = CategoryChannel::import_from_tangle(
-            &categories_info.weighing_scale.channel_id,
-            &categories_info.weighing_scale.announce_id,
+            &categories_info.weighing_scales.channel_id,
+            &categories_info.weighing_scales.announce_id,
             state_psw,
             Category::Scales,
             mainnet
         ).await?;
-
+        println!("  Scales imported");
         let biocell_category = CategoryChannel::import_from_tangle(
-            &categories_info.biocell.channel_id,
-            &categories_info.biocell.announce_id,
+            &categories_info.biocells.channel_id,
+            &categories_info.biocells.announce_id,
             state_psw,
             Category::BioCells,
             mainnet
         ).await?;
-
+        println!("  Biocells imported");
         Ok((truck_category, weighing_scale_category, biocell_category))
     }
 }

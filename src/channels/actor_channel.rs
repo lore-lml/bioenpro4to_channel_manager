@@ -37,7 +37,11 @@ impl DailyChannelMsg{
         timestamp_to_date_string(self.creation_timestamp, false)
     }
     pub fn print_nested_channel_info(&self){
-        println!("|   |   |--Day {} = {}:{}", self.creation_date(), self.address.channel_id, self.address.announce_id);
+        if self.category == String::from("biocells"){
+            println!("        |--Day {} = {}:{}", self.creation_date(), self.address.channel_id, self.address.announce_id);
+        }else{
+            println!("|   |   |--Day {} = {}:{}", self.creation_date(), self.address.channel_id, self.address.announce_id);
+        }
     }
 }
 
@@ -154,7 +158,11 @@ impl ActorChannel{
 
     pub fn print_nested_channel_info(&self){
         let info = self.channel_info();
-        println!("|   |--Actor {} = {}:{}", self.actor_id, info.channel_id, info.announce_id);
+        if self.category.is_biocells(){
+            println!("    |--Actor {} = {}:{}", self.actor_id, info.channel_id, info.announce_id);
+        }else{
+            println!("|   |--Actor {} = {}:{}", self.actor_id, info.channel_id, info.announce_id);
+        }
 
         self.daily_channels.iter().for_each(|ch| ch.print_nested_channel_info());
     }
