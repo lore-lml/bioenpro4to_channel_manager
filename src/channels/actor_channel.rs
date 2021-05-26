@@ -18,25 +18,25 @@ struct DailyChannelMsg{
 
 #[allow(dead_code)]
 impl DailyChannelMsg{
-    pub fn new(address: ChannelInfo, category: Category, actor_id: &str, creation_timestamp: i64) -> Self {
+    pub (crate) fn new(address: ChannelInfo, category: Category, actor_id: &str, creation_timestamp: i64) -> Self {
         DailyChannelMsg { address, category: category.to_string(), actor_id: actor_id.to_lowercase(), creation_timestamp }
     }
-    pub fn address(&self) -> &ChannelInfo {
+    pub (crate) fn address(&self) -> &ChannelInfo {
         &self.address
     }
-    pub fn category(&self) -> &str {
+    pub (crate) fn category(&self) -> &str {
         &self.category
     }
-    pub fn actor_id(&self) -> &str {
+    pub (crate) fn actor_id(&self) -> &str {
         &self.actor_id
     }
-    pub fn creation_timestamp(&self) -> i64 {
+    pub (crate) fn creation_timestamp(&self) -> i64 {
         self.creation_timestamp
     }
-    pub fn creation_date(&self) -> String{
+    pub (crate) fn creation_date(&self) -> String{
         timestamp_to_date_string(self.creation_timestamp, false)
     }
-    pub fn print_nested_channel_info(&self){
+    pub (crate) fn print_nested_channel_info(&self){
         if self.category == String::from("biocells"){
             println!("        |--Day {} = {}:{}", self.creation_date(), self.address.channel_id, self.address.announce_id);
         }else{
@@ -45,7 +45,7 @@ impl DailyChannelMsg{
     }
 }
 
-pub struct ActorChannel{
+pub (crate) struct ActorChannel{
     category: Category,
     actor_id: String,
     channel: ChannelWriter,
@@ -55,12 +55,12 @@ pub struct ActorChannel{
 }
 
 impl ActorChannel{
-    pub fn new(category: Category, actor_id: &str, mainnet: bool) -> Self {
+    pub (crate) fn new(category: Category, actor_id: &str, mainnet: bool) -> Self {
         let channel = create_channel(mainnet);
         ActorChannel { category, actor_id: actor_id.to_lowercase(), channel, daily_channels: vec![], imported_channels: vec![], mainnet }
     }
 
-    pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, actor_id: &str, mainnet: bool) -> anyhow::Result<Self>{
+    pub (crate) async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, actor_id: &str, mainnet: bool) -> anyhow::Result<Self>{
         let node = if mainnet{
             Some("https://chrysalis-nodes.iota.cafe/")
         }else{
@@ -84,12 +84,12 @@ impl ActorChannel{
         Ok( ActorChannel{category, actor_id: actor_id.to_lowercase(), channel, daily_channels, imported_channels: vec![], mainnet } )
     }
 
-    pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
+    pub (crate) async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
         let info = self.channel.open_and_save(channel_psw).await?;
         Ok(ChannelInfo::new(info.0, info.1))
     }
 
-    pub async fn get_or_create_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+    pub (crate) async fn get_or_create_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         // Cerco se la data è presente all'interno dei daily channel msgs
         let date_string = format!("{:02}/{:02}/{}", day, month, year);
         let daily_ch_msg = self.daily_channels.iter()
@@ -141,22 +141,22 @@ impl ActorChannel{
     }
 
     #[allow(dead_code)]
-    pub async fn get_or_create_daily_channel(&mut self, state_psw: &str) -> anyhow::Result<DailyChannelManager>{
+    pub (crate) async fn get_or_create_daily_channel(&mut self, state_psw: &str) -> anyhow::Result<DailyChannelManager>{
         let date = timestamp_to_date(current_time_secs(), false);
         self.get_or_create_daily_channel_in_date(state_psw, date.day() as u16, date.month() as u16, date.year() as u16).await
 
     }
 
-    pub fn actor_id(&self) -> &str {
+    pub (crate) fn actor_id(&self) -> &str {
         &self.actor_id
     }
 
-    pub fn channel_info(&self) -> ChannelInfo{
+    pub (crate) fn channel_info(&self) -> ChannelInfo{
         let info = self.channel.channel_address();
         ChannelInfo::new(info.0, info.1)
     }
 
-    pub fn print_nested_channel_info(&self){
+    pub (crate) fn print_nested_channel_info(&self){
         let info = self.channel_info();
         if self.category.is_biocells(){
             println!("    |--Actor {} = {}:{}", self.actor_id, info.channel_id, info.announce_id);
