@@ -69,6 +69,9 @@ impl ChannelInfo{
     pub fn announce_id(&self) -> &str {
         &self.announce_id
     }
+    pub fn explorer_url(&self) -> String{
+        format!("https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.channel_id, self.announce_id)
+    }
 }
 
 fn create_channel(mainnet: bool) -> ChannelWriter{
