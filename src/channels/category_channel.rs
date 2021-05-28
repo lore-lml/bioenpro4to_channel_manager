@@ -96,7 +96,7 @@ impl CategoryChannel {
             Category::BioCells => "BioCells"
         };
 
-        println!("|--{} = {}:{}", category, info.channel_id, info.announce_id);
+        println!("|--{} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", category, info.channel_id, info.announce_id);
         self.actors.iter().for_each(|a| a.print_nested_channel_info());
     }
 }

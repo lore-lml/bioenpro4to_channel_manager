@@ -123,7 +123,7 @@ impl RootChannel{
     //
     pub fn print_nested_channel_info(&self){
         let info = self.channel_info();
-        println!("\nRoot = {}:{}", info.channel_id, info.announce_id);
+        println!("\nRoot = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", info.channel_id, info.announce_id);
 
         self.truck_category.print_nested_channel_info();
         self.weighing_scale_category.print_nested_channel_info();
