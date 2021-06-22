@@ -1,8 +1,8 @@
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
-use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::actor_channel::{ActorChannel, DailyChannelManager};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
+use iota_streams_lib::channels::ChannelWriter;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActorChannelMsg{

@@ -1,7 +1,7 @@
-use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::{Category, create_channel, ChannelInfo};
 use crate::utils::{current_time_secs, timestamp_to_date_string};
 use chrono::NaiveDate;
+use iota_streams_lib::channels::ChannelWriter;
 
 #[allow(dead_code)]
 pub struct DailyChannel{

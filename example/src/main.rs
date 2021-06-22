@@ -1,15 +1,16 @@
 use bioenpro4to_channel_manager::channels::root_channel::RootChannel;
 use bioenpro4to_channel_manager::channels::{Category, ChannelInfo};
-use bioenpro4to_channel_manager::utils::{create_encryption_key, create_encryption_nonce};
+use bioenpro4to_channel_manager::utils::{create_encryption_key, create_encryption_nonce, current_time_secs};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Message{
     msg: String,
+    timestamp: i64,
 }
 impl Message{
     fn new(msg: &str) -> Self {
-        Message { msg: msg.to_string() }
+        Message { msg: msg.to_string(), timestamp: current_time_secs() }
     }
 
     fn to_json(&self) -> anyhow::Result<Vec<u8>>{
@@ -23,12 +24,13 @@ async fn test_create_nested_channels(state_psw: &str, mainnet: bool, key_nonce: 
     root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
     root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 26, 5, 2021).await?;
     root.get_or_create_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 25, 5, 2021).await?;
-    root.get_or_create_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 28, 5, 2021).await?;
+    let mut scale_ch = root.get_or_create_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 28, 5, 2021).await?;
 
     let mut daily_ch = root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
-    let public = Message::new("PUBLIC MESSAGE").to_json()?;
-    let private = Message::new("PRIVATE MESSAGE").to_json()?;
-    daily_ch.send_raw_packet(public, private, key_nonce).await?;
+    let public = Message::new("PUBLIC MESSAGE");
+    let private = Message::new("PRIVATE MESSAGE");
+    daily_ch.send_raw_packet(public.to_json()?, private.to_json()?, key_nonce).await?;
+    scale_ch.send_raw_packet(public.to_json()?, private.to_json()?, key_nonce).await?;
     root.print_nested_channel_info();
     Ok(info)
 }
@@ -44,9 +46,11 @@ async fn test_restore_nested_channels(info: ChannelInfo, state_psw: &str, mainne
     ).await?;
     root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 27, 5, 2021).await?;
     let mut daily_ch = root.get_or_create_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
-    let public = Message::new("PUBLIC MESSAGE").to_json()?;
-    let private = Message::new("PRIVATE MESSAGE").to_json()?;
-    daily_ch.send_raw_packet(public, private, key_nonce).await?;
+    let mut biocell_ch = root.get_or_create_daily_actor_channel(Category::BioCells, "BIO1", state_psw, 30, 5, 2021).await?;
+    let public = Message::new("PUBLIC MESSAGE");
+    let private = Message::new("PRIVATE MESSAGE");
+    daily_ch.send_raw_packet(public.to_json()?, private.to_json()?, key_nonce).await?;
+    biocell_ch.send_raw_packet(public.to_json()?, private.to_json()?, key_nonce).await?;
     root.print_nested_channel_info();
     Ok(())
 }

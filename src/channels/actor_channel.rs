@@ -1,4 +1,3 @@
-use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
 use crate::channels::daily_channel::DailyChannel;
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use crate::utils::{current_time_secs, timestamp_to_date, timestamp_to_date_string};
@@ -7,6 +6,7 @@ use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPack
 use serde::{Serialize, Deserialize};
 use std::cell::RefCell;
 use std::rc::Rc;
+use iota_streams_lib::channels::ChannelWriter;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct DailyChannelMsg{

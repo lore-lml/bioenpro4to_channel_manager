@@ -1,7 +1,5 @@
-use iota_streams_lib::channel::tangle_channel_writer::ChannelWriter;
-use iota_streams_lib::channel::builders::channel_builders::{ChannelWriterBuilder, ChannelReaderBuilder};
 use serde::{Serialize, Deserialize};
-use iota_streams_lib::channel::tangle_channel_reader::ChannelReader;
+use iota_streams_lib::channels::{ChannelWriter, ChannelReader};
 
 pub mod root_channel;
 mod category_channel;
@@ -76,14 +74,14 @@ impl ChannelInfo{
 
 fn create_channel(mainnet: bool) -> ChannelWriter{
     if mainnet{
-        return ChannelWriterBuilder::new().node("https://chrysalis-nodes.iota.cafe/").build();
+        return ChannelWriter::builder().node("https://chrysalis-nodes.iota.cafe/").build();
     }
-    ChannelWriterBuilder::new().build()
+    ChannelWriter::builder().build()
 }
 
 fn create_reader(channel_id: &str, announce_id: &str, mainnet:bool) -> ChannelReader{
     if mainnet{
-        return ChannelReaderBuilder::new().node("https://chrysalis-nodes.iota.cafe/").build(channel_id, announce_id);
+        return ChannelReader::builder().node("https://chrysalis-nodes.iota.cafe/").build(channel_id, announce_id);
     }
-    ChannelReaderBuilder::new().build(channel_id, announce_id)
+    ChannelReader::builder().build(channel_id, announce_id)
 }
