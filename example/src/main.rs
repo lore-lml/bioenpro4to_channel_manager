@@ -1,3 +1,4 @@
+mod messages;
 use bioenpro4to_channel_manager::channels::root_channel::RootChannel;
 use bioenpro4to_channel_manager::channels::{Category, ChannelInfo};
 use bioenpro4to_channel_manager::utils::{create_encryption_key, create_encryption_nonce, current_time_secs};

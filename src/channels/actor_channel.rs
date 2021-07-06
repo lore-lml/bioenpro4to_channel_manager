@@ -4,9 +4,8 @@ use crate::utils::{current_time_secs, timestamp_to_date, timestamp_to_date_strin
 use chrono::Datelike;
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
-use std::cell::RefCell;
-use std::rc::Rc;
 use iota_streams_lib::channels::ChannelWriter;
+use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct DailyChannelMsg{
@@ -50,7 +49,7 @@ pub (crate) struct ActorChannel{
     actor_id: String,
     channel: ChannelWriter,
     daily_channels: Vec<DailyChannelMsg>,
-    imported_channels: Vec<Rc<RefCell<DailyChannel>>>,
+    imported_channels: Vec<Arc<Mutex<DailyChannel>>>,
     mainnet: bool,
 }
 
@@ -104,13 +103,13 @@ impl ActorChannel{
                 let info = daily_channel.open(state_psw).await?;
                 let daily_ch_msg = self.publish_daily_channel(info, timestamp).await?;
                 self.daily_channels.push(daily_ch_msg);
-                let cell = Rc::new(RefCell::new(daily_channel));
+                let cell = Arc::new(Mutex::new(daily_channel));
                 self.imported_channels.push(cell.clone());
                 return Ok(DailyChannelManager::new(cell));
             },
             Some(info) => { // Altrimenti si ricerca agli interno degli imported
                 ( self.imported_channels.iter_mut()
-                     .find(|ch| ch.borrow().creation_date() == date_string), info )
+                     .find(|ch| ch.lock().unwrap().creation_date() == date_string), info )
             }
         };
 
@@ -132,7 +131,7 @@ impl ActorChannel{
 
         match res{
             Ok(res) => {
-                let cell = Rc::new(RefCell::new(res));
+                let cell = Arc::new(Mutex::new(res));
                 self.imported_channels.push(cell.clone());
                 Ok(DailyChannelManager::new(cell))
             } // Se c'è stato un errore durante il restore dal tangle probabilmente la password inserita sarà sbagliata
@@ -191,27 +190,27 @@ impl ActorChannel{
 }
 
 pub struct DailyChannelManager{
-    daily_channel: Rc<RefCell<DailyChannel>>,
+    daily_channel: Arc<Mutex<DailyChannel>>,
 }
 
 impl DailyChannelManager {
-    fn new(daily_channel: Rc<RefCell<DailyChannel>>) -> Self {
+    fn new(daily_channel: Arc<Mutex<DailyChannel>>) -> Self {
         DailyChannelManager { daily_channel }
     }
 
     pub async fn send_raw_packet(&mut self, p_data: Vec<u8>, m_data: Vec<u8>, key_nonce: Option<([u8;32], [u8;24])>) -> anyhow::Result<String>{
-        self.daily_channel.borrow_mut().send_raw_packet(p_data, m_data, key_nonce).await
+        self.daily_channel.lock().unwrap().send_raw_packet(p_data, m_data, key_nonce).await
     }
 
     pub fn creation_timestamp(&self) -> i64 {
-        self.daily_channel.borrow().creation_timestamp()
+        self.daily_channel.lock().unwrap().creation_timestamp()
     }
 
     pub fn creation_date(&self) -> String{
-        self.daily_channel.borrow().creation_date()
+        self.daily_channel.lock().unwrap().creation_date()
     }
 
     pub fn channel_info(&self) -> ChannelInfo{
-        self.daily_channel.borrow().channel_info()
+        self.daily_channel.lock().unwrap().channel_info()
     }
 }
