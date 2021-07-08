@@ -48,6 +48,16 @@ impl Category{
             Category::BioCells => "biocells".to_string()
         }
     }
+
+    pub fn from_string(category: &str) -> Option<Category>{
+        let category = category.to_lowercase();
+        match category.as_str(){
+            "trucks" => Some(Category::Trucks),
+            "scales" => Some(Category::Scales),
+            "biocells" => Some(Category::BioCells),
+            _ => None
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
