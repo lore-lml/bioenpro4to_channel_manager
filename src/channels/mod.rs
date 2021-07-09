@@ -6,7 +6,7 @@ mod category_channel;
 pub mod actor_channel;
 mod daily_channel;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Category{
     Trucks,
     Scales,
