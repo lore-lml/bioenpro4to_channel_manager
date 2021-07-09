@@ -78,7 +78,7 @@ impl CategoryChannel {
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         println!("ACTOR FOUND: {}", exist);
         if !exist{
-            println!("CREATING ACTOR CHANNEL: {}", exist);
+            println!("CREATING ACTOR CHANNEL");
             self.create_actor_channel(actor_id, state_psw).await?;
         }
         self.actors.iter_mut()
@@ -125,7 +125,9 @@ impl CategoryChannel{
         let packet = JsonPacketBuilder::new()
             .public(&msg)?
             .build();
-        self.channel.send_signed_packet(&packet).await?;
+        println!("SENDING MSG: {:#?}", msg);
+        let msg_id = self.channel.send_signed_packet(&packet).await?;
+        println!("CHANNEL CREATED -> {}:{}", self.channel.channel_address().0, msg_id);
         Ok(())
     }
 
