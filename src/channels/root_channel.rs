@@ -28,6 +28,7 @@ pub struct RootChannel{
 
 
 impl RootChannel{
+    //TODO: add mutex for synchronization
     //
     // Build the Root Channel of the nested channel architecture of BioEnPro4To project
     //
