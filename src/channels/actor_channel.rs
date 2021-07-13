@@ -88,13 +88,14 @@ impl ActorChannel{
         Ok(ChannelInfo::new(info.0, info.1))
     }
 
-    pub (crate) async fn get_or_create_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+
+    pub (crate) async fn new_daily_actor_channel(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         // Cerco se la data è presente all'interno dei daily channel msgs
         let date_string = format!("{:02}/{:02}/{}", day, month, year);
         let daily_ch_msg = self.daily_channels.iter()
             .find(|ch| { date_string == ch.creation_date() });
 
-        let (ch, daily_ch_msg) = match daily_ch_msg {
+        match daily_ch_msg {
             None => { // Se non è stata trovata la data corrispondente allora viene creato un nuovo channel
                 let mut daily_channel = DailyChannel::new_in_date(
                     self.category.clone(), self.actor_id(), day, month, year, self.mainnet
@@ -105,14 +106,27 @@ impl ActorChannel{
                 self.daily_channels.push(daily_ch_msg);
                 let cell = Arc::new(Mutex::new(daily_channel));
                 self.imported_channels.push(cell.clone());
-                return Ok(DailyChannelManager::new(cell));
+                Ok(DailyChannelManager::new(cell))
             },
-            Some(info) => { // Altrimenti si ricerca agli interno degli imported
-                ( self.imported_channels.iter_mut()
-                     .find(|ch| ch.lock().unwrap().creation_date() == date_string), info )
-            }
-        };
+            // Altrimenti si ritorna errore channel gia creato
+            Some(_) => Err(anyhow::Error::msg(format!("Daily channel in date {} already exist", date_string)))
+        }
+    }
 
+    pub (crate) async fn get_daily_channel_in_date(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+        // Cerco se la data è presente all'interno dei daily channel msgs
+        let date_string = format!("{:02}/{:02}/{}", day, month, year);
+        let daily_ch_msg = self.daily_channels.iter()
+            .find(|ch| { date_string == ch.creation_date() });
+
+        let (ch, daily_ch_msg) = match daily_ch_msg {
+            Some(info) => { // Se esiste si ricerca agli interno degli imported
+                ( self.imported_channels.iter_mut()
+                      .find(|ch| ch.lock().unwrap().creation_date() == date_string), info )
+            }
+            // Altrimenti viene ritornato errore
+            None => return Err(anyhow::Error::msg(format!("Daily Channel in date {} doesn't exist", date_string))),
+        };
 
         let res = match ch{
             None => { // Se tra gli imported non è stato trovato si tenta un ripristino dal tangle
@@ -142,7 +156,7 @@ impl ActorChannel{
     #[allow(dead_code)]
     pub (crate) async fn get_or_create_daily_channel(&mut self, state_psw: &str) -> anyhow::Result<DailyChannelManager>{
         let date = timestamp_to_date(current_time_secs(), false);
-        self.get_or_create_daily_channel_in_date(state_psw, date.day() as u16, date.month() as u16, date.year() as u16).await
+        self.get_daily_channel_in_date(state_psw, date.day() as u16, date.month() as u16, date.year() as u16).await
 
     }
 

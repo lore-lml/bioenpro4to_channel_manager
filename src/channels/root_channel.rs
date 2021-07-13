@@ -4,6 +4,7 @@ use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPack
 use serde::{Serialize, Deserialize};
 use crate::channels::actor_channel::DailyChannelManager;
 use iota_streams_lib::channels::ChannelWriter;
+use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
@@ -20,9 +21,7 @@ impl CategoryChannelsInfo{
 
 pub struct RootChannel{
     root: ChannelWriter,
-    truck_category: CategoryChannel,
-    weighing_scale_category: CategoryChannel,
-    biocell_category: CategoryChannel,
+    categories: Vec<(Arc<Mutex<CategoryChannel>>, Category)>,
     mainnet: bool
 }
 
@@ -33,11 +32,11 @@ impl RootChannel{
     // Build the Root Channel of the nested channel architecture of BioEnPro4To project
     //
     pub fn new(mainnet: bool) -> Self {
-        let truck_category = CategoryChannel::new(Category::Trucks, mainnet);
-        let weighing_scale_category = CategoryChannel::new(Category::Scales, mainnet);
-        let biocell_category = CategoryChannel::new(Category::BioCells, mainnet);
+        let truck_category = (Arc::new(Mutex::new(CategoryChannel::new(Category::Trucks, mainnet))), Category::Trucks);
+        let weighing_scale_category = (Arc::new(Mutex::new(CategoryChannel::new(Category::Scales, mainnet))), Category::Scales);
+        let biocell_category = (Arc::new(Mutex::new(CategoryChannel::new(Category::BioCells, mainnet))), Category::BioCells);
         let root = create_channel(mainnet);
-        RootChannel { root, truck_category, weighing_scale_category, biocell_category, mainnet }
+        RootChannel { root, categories: vec![truck_category, weighing_scale_category, biocell_category], mainnet }
     }
 
     //
@@ -64,9 +63,11 @@ impl RootChannel{
 
         Ok(RootChannel{
             root,
-            truck_category: categories.0,
-            weighing_scale_category: categories.1,
-            biocell_category: categories.2,
+            categories: vec![
+                (Arc::new(Mutex::new(categories.0)), Category::Trucks),
+                (Arc::new(Mutex::new(categories.1)), Category::Scales),
+                (Arc::new(Mutex::new(categories.2)), Category::BioCells)
+            ],
             mainnet
         })
     }
@@ -77,11 +78,11 @@ impl RootChannel{
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
         // Opening Channels Category Info
         println!("Initializing channels...");
-        self.truck_category.open(channel_psw).await?;
+        self.categories[0].0.lock().unwrap().open(channel_psw).await?;
         println!("  Trucks tree initialized");
-        self.weighing_scale_category.open(channel_psw).await?;
+        self.categories[1].0.lock().unwrap().open(channel_psw).await?;
         println!("  Scales tree initialized");
-        self.biocell_category.open(channel_psw).await?;
+        self.categories[2].0.lock().unwrap().open(channel_psw).await?;
         println!("  Biocells tree initialized");
         // Opening the root channel
         let root_info = self.root.open_and_save(channel_psw).await?;
@@ -89,17 +90,26 @@ impl RootChannel{
         Ok(ChannelInfo::new(root_info.0, root_info.1))
     }
 
+
+
     //
     // Create the daily channel for a given actor of a certain category for the specified date
     //
-    pub async fn get_or_create_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
-                                                   day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+
+    pub async fn new_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
+                                         day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+        println!("Trying creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
+        let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let res = category.lock().unwrap().new_daily_actor_channel(actor_id, state_psw, day, month, year).await;
+        println!("  Creation complete");
+        res
+    }
+
+    pub async fn get_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
+                                         day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         println!("Getting/Creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
-        let res = match category{
-            Category::Trucks => self.truck_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
-            Category::Scales => self.weighing_scale_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await,
-            Category::BioCells => self.biocell_category.get_or_create_daily_actor_channel(actor_id, state_psw, day, month, year).await
-        };
+        let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let res = category.lock().unwrap().get_daily_actor_channel(actor_id, state_psw, day, month, year).await;
         println!("  Getting/Creation complete");
         res
     }
@@ -126,9 +136,9 @@ impl RootChannel{
         let info = self.channel_info();
         println!("\nRoot = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", info.channel_id, info.announce_id);
 
-        self.truck_category.print_nested_channel_info();
-        self.weighing_scale_category.print_nested_channel_info();
-        self.biocell_category.print_nested_channel_info();
+        self.categories[0].0.lock().unwrap().print_nested_channel_info();
+        self.categories[1].0.lock().unwrap().print_nested_channel_info();
+        self.categories[2].0.lock().unwrap().print_nested_channel_info();
         println!();
     }
 }
@@ -136,9 +146,9 @@ impl RootChannel{
 impl RootChannel {
     async fn init_categories(&mut self) -> anyhow::Result<()>{
         println!("Initializing tree messages...");
-        let truck_info = self.truck_category.channel_info();
-        let scale_info = self.weighing_scale_category.channel_info();
-        let biocell_info = self.biocell_category.channel_info();
+        let truck_info = self.categories[0].0.lock().unwrap().channel_info();
+        let scale_info = self.categories[1].0.lock().unwrap().channel_info();
+        let biocell_info = self.categories[2].0.lock().unwrap().channel_info();
 
         //Creating MSG to send containing the info for every category channel
         let categories_info = CategoryChannelsInfo::new(truck_info, scale_info, biocell_info);
