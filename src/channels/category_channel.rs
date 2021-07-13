@@ -3,6 +3,7 @@ use crate::channels::actor_channel::{ActorChannel, DailyChannelManager};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use iota_streams_lib::channels::ChannelWriter;
+use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct ActorChannelMsg{
@@ -31,6 +32,7 @@ pub struct CategoryChannel{
     category: Category,
     channel: ChannelWriter,
     actors: Vec<ActorChannel>,
+    lock: Arc<Mutex<()>>,
     mainnet: bool
 }
 
@@ -38,7 +40,7 @@ pub struct CategoryChannel{
 impl CategoryChannel {
     pub fn new(category: Category, mainnet: bool) -> Self {
         let channel = create_channel(mainnet);
-        CategoryChannel { category, channel, actors: vec![], mainnet }
+        CategoryChannel { category, channel, actors: vec![], lock: Arc::new(Mutex::new(())), mainnet }
     }
 
     pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, mainnet: bool) -> anyhow::Result<Self>{
@@ -60,10 +62,11 @@ impl CategoryChannel {
                 mainnet).await?;
             actors.push(ch);
         }
-        Ok( CategoryChannel{ category, channel, actors, mainnet } )
+        Ok( CategoryChannel{ category, channel, actors, lock: Arc::new(Mutex::new(())), mainnet } )
     }
 
     pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
+        self.lock.lock().unwrap();
         let info = self.channel.open_and_save(channel_psw).await?;
         Ok(ChannelInfo::new(info.0, info.1))
     }
@@ -74,6 +77,7 @@ impl CategoryChannel {
 
     pub async fn get_or_create_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
                                                    day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
+        self.lock.lock().unwrap();
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         if !exist{
             self.create_actor_channel(actor_id, state_psw).await?;
