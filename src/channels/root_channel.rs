@@ -22,6 +22,7 @@ impl CategoryChannelsInfo{
 pub struct RootChannel{
     root: ChannelWriter,
     categories: Vec<(Arc<Mutex<CategoryChannel>>, Category)>,
+    psw: String,
     mainnet: bool
 }
 
@@ -36,7 +37,7 @@ impl RootChannel{
         let weighing_scale_category = (Arc::new(Mutex::new(CategoryChannel::new(Category::Scales, mainnet))), Category::Scales);
         let biocell_category = (Arc::new(Mutex::new(CategoryChannel::new(Category::BioCells, mainnet))), Category::BioCells);
         let root = create_channel(mainnet);
-        RootChannel { root, categories: vec![truck_category, weighing_scale_category, biocell_category], mainnet }
+        RootChannel { root, categories: vec![truck_category, weighing_scale_category, biocell_category], psw: String::default(), mainnet }
     }
 
     //
@@ -68,6 +69,7 @@ impl RootChannel{
                 (Arc::new(Mutex::new(categories.1)), Category::Scales),
                 (Arc::new(Mutex::new(categories.2)), Category::BioCells)
             ],
+            psw: state_psw.to_string(),
             mainnet
         })
     }
@@ -87,6 +89,7 @@ impl RootChannel{
         // Opening the root channel
         let root_info = self.root.open_and_save(channel_psw).await?;
         self.init_categories().await?;
+        self.psw = channel_psw.to_string();
         Ok(ChannelInfo::new(root_info.0, root_info.1))
     }
 
@@ -100,17 +103,17 @@ impl RootChannel{
                                          day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         println!("Trying creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
         let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
-        let res = category.lock().unwrap().new_daily_actor_channel(actor_id, state_psw, day, month, year).await;
+        let res = category.lock().unwrap().new_daily_actor_channel(actor_id, &self.psw, state_psw, day, month, year).await;
         println!("  Creation complete");
         res
     }
 
     pub async fn get_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
                                          day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
-        println!("Getting/Creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
+        println!("Getting daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
         let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
         let res = category.lock().unwrap().get_daily_actor_channel(actor_id, state_psw, day, month, year).await;
-        println!("  Getting/Creation complete");
+        println!("  Getting complete");
         res
     }
 

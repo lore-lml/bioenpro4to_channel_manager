@@ -72,11 +72,11 @@ impl CategoryChannel {
         &self.category
     }
 
-    pub async fn new_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
+    pub async fn new_daily_actor_channel(&mut self, actor_id: &str, root_psw: &str, state_psw: &str,
                                                    day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         if !exist{
-            self.create_actor_channel(actor_id, state_psw).await?;
+            self.create_actor_channel(actor_id, root_psw).await?;
         }
 
         self.actors.iter_mut()

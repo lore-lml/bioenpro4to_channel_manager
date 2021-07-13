@@ -22,6 +22,7 @@ impl Message{
 async fn test_create_nested_channels(state_psw: &str, mainnet: bool, key_nonce: Option<([u8; 32],[u8; 24])>) -> anyhow::Result<ChannelInfo>{
     let mut root = RootChannel::new(mainnet);
     let info = root.open(state_psw).await?;
+    let state_psw = "ciaone";
     root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
     root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 26, 5, 2021).await?;
     root.new_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 25, 5, 2021).await?;
@@ -45,6 +46,7 @@ async fn test_restore_nested_channels(info: ChannelInfo, state_psw: &str, mainne
         state_psw,
         mainnet
     ).await?;
+    let state_psw = "ciaone";
     root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 27, 5, 2021).await?;
     let mut daily_ch = root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
     let mut biocell_ch = root.new_daily_actor_channel(Category::BioCells, "BIO1", state_psw, 30, 5, 2021).await?;
