@@ -1,4 +1,5 @@
 pub extern crate serde;
+pub use iota_streams_lib::utility::iota_utility::{create_encryption_nonce, create_encryption_key, hash_string};
 use chrono::{Local, NaiveDateTime, Datelike};
 
 pub fn current_time_millis() -> i64{
@@ -21,12 +22,4 @@ pub fn timestamp_to_date(timestamp: i64, millis: bool) -> NaiveDateTime{
 pub fn timestamp_to_date_string(timestamp: i64, millis: bool) -> String{
     let date = timestamp_to_date(timestamp, millis);
     format!("{:02}/{:02}/{}", date.day(), date.month(), date.year())
-}
-
-pub fn create_encryption_key(string_key: &str) -> [u8; 32]{
-    iota_streams_lib::utility::iota_utility::create_encryption_key(string_key)
-}
-
-pub fn create_encryption_nonce(string_nonce: &str) -> [u8; 24]{
-    iota_streams_lib::utility::iota_utility::create_encryption_nonce(string_nonce)
 }
