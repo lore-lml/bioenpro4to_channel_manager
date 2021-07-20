@@ -1,11 +1,12 @@
 use crate::channels::daily_channel::DailyChannel;
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
-use crate::utils::{current_time_secs, timestamp_to_date, timestamp_to_date_string};
+use crate::utils::{current_time_secs, timestamp_to_date, timestamp_to_date_string, hash_string};
 use chrono::Datelike;
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct DailyChannelMsg{
@@ -49,14 +50,14 @@ pub (crate) struct ActorChannel{
     actor_id: String,
     channel: ChannelWriter,
     daily_channels: Vec<DailyChannelMsg>,
-    imported_channels: Vec<Arc<Mutex<DailyChannel>>>,
+    imported_channels: HashMap<(String, String), Arc<Mutex<DailyChannel>>>,
     mainnet: bool,
 }
 
 impl ActorChannel{
     pub (crate) fn new(category: Category, actor_id: &str, mainnet: bool) -> Self {
         let channel = create_channel(mainnet);
-        ActorChannel { category, actor_id: actor_id.to_lowercase(), channel, daily_channels: vec![], imported_channels: vec![], mainnet }
+        ActorChannel { category, actor_id: actor_id.to_lowercase(), channel, daily_channels: vec![], imported_channels: HashMap::new(), mainnet }
     }
 
     pub (crate) async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, actor_id: &str, mainnet: bool) -> anyhow::Result<Self>{
@@ -80,7 +81,7 @@ impl ActorChannel{
             ).await?;
             daily_channels.push(Rc::new(RefCell::new(ch)));
         }*/
-        Ok( ActorChannel{category, actor_id: actor_id.to_lowercase(), channel, daily_channels, imported_channels: vec![], mainnet } )
+        Ok( ActorChannel{category, actor_id: actor_id.to_lowercase(), channel, daily_channels, imported_channels: HashMap::new(), mainnet } )
     }
 
     pub (crate) async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
@@ -105,7 +106,7 @@ impl ActorChannel{
                 let daily_ch_msg = self.publish_daily_channel(info, timestamp).await?;
                 self.daily_channels.push(daily_ch_msg);
                 let cell = Arc::new(Mutex::new(daily_channel));
-                self.imported_channels.push(cell.clone());
+                self.imported_channels.insert((date_string.clone(), hash_string(state_psw)), cell.clone());
                 Ok(DailyChannelManager::new(cell))
             },
             // Altrimenti si ritorna errore channel gia creato
@@ -121,11 +122,10 @@ impl ActorChannel{
 
         let (ch, daily_ch_msg) = match daily_ch_msg {
             Some(info) => { // Se esiste si ricerca agli interno degli imported
-                ( self.imported_channels.iter_mut()
-                      .find(|ch| ch.lock().unwrap().creation_date() == date_string), info )
+                ( self.imported_channels.get(&(date_string.clone(), hash_string(state_psw))), info )
             }
             // Altrimenti viene ritornato errore
-            None => return Err(anyhow::Error::msg(format!("Daily Channel in date {} doesn't exist", date_string))),
+            None => return Err(anyhow::Error::msg(format!("Daily Channel date or psw wrong"))),
         };
 
         let res = match ch{
@@ -146,7 +146,7 @@ impl ActorChannel{
         match res{
             Ok(res) => {
                 let cell = Arc::new(Mutex::new(res));
-                self.imported_channels.push(cell.clone());
+                self.imported_channels.insert((date_string.clone(), hash_string(state_psw)),cell.clone());
                 Ok(DailyChannelManager::new(cell))
             } // Se c'è stato un errore durante il restore dal tangle probabilmente la password inserita sarà sbagliata
             Err(_) => Err(anyhow::Error::msg(format!("Impossible to get the channel in date {} because password is wrong", date_string)))

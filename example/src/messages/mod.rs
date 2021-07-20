@@ -1,5 +1,8 @@
+#[allow(dead_code)]
 pub mod biocells;
+#[allow(dead_code)]
 pub mod scales;
+#[allow(dead_code)]
 pub mod trucks;
 use serde::{Serialize, Deserialize};
 
