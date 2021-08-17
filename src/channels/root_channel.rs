@@ -1,10 +1,11 @@
-use crate::channels::category_channel::CategoryChannel;
+use crate::channels::category_channel::{CategoryChannel, ActorChannelMsg};
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
-use crate::channels::actor_channel::DailyChannelManager;
+use crate::channels::actor_channel::{DailyChannelManager, DailyChannelMsg};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
+use crate::utils::check_date_format;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
@@ -28,7 +29,6 @@ pub struct RootChannel{
 
 
 impl RootChannel{
-    //TODO: add mutex for synchronization
     //
     // Build the Root Channel of the nested channel architecture of BioEnPro4To project
     //
@@ -201,4 +201,28 @@ impl RootChannel {
         println!("  Biocells imported");
         Ok((truck_category, weighing_scale_category, biocell_category))
     }
+}
+
+
+// Read APIs
+impl RootChannel{
+    pub fn actors_of_category(&self, category: Category) -> Vec<ActorChannelMsg>{
+        let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        cat.lock().unwrap().actors_info()
+    }
+
+    pub fn channels_of_actor(&self, category: Category, actor_id: &str) -> Vec<DailyChannelMsg>{
+        let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        cat.lock().unwrap().channels_of_actor(actor_id)
+    }
+
+    pub async fn daily_channel_info(&self, category: Category, actor_id: &str, date: &str) -> anyhow::Result<Vec<String>>{
+        if !check_date_format(date){
+            return Err(anyhow::Error::msg("Invalid Date format"));
+        }
+        let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        cat.lock().unwrap().daily_channel_info(actor_id, date).await
+    }
+
+
 }

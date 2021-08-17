@@ -1,11 +1,11 @@
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
-use crate::channels::actor_channel::{ActorChannel, DailyChannelManager};
+use crate::channels::actor_channel::{ActorChannel, DailyChannelManager, DailyChannelMsg};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use iota_streams_lib::channels::ChannelWriter;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct ActorChannelMsg{
+pub struct ActorChannelMsg{
     address: ChannelInfo,
     category: String,
     actor_id: String,
@@ -149,5 +149,31 @@ impl CategoryChannel{
             actors.push(m.deserialize_public()?);
         }
         Ok(actors)
+    }
+}
+
+// Read APIs
+impl CategoryChannel {
+    pub fn actors_info(&self) -> Vec<ActorChannelMsg>{
+        self.actors.iter().map(|a| {
+            ActorChannelMsg::new(a.channel_info(), self.category.clone(), a.actor_id())
+        })
+            .collect()
+    }
+
+    pub fn channels_of_actor(&self, actor_id: &str) -> Vec<DailyChannelMsg>{
+        self.actors.iter()
+            .find(|a| a.actor_id().to_lowercase() == actor_id.to_lowercase())
+            .map_or(vec![], |a| a.daily_channels_info())
+    }
+
+    pub async fn daily_channel_info(&self, actor_id: &str, date: &str) -> anyhow::Result<Vec<String>>{
+        let actor_ch = self.actors.iter()
+            .find(|a| a.actor_id().to_lowercase() == actor_id.to_lowercase());
+
+        match actor_ch{
+            Some(ch) => ch.daily_channel_info(date).await,
+            None => Err(anyhow::Error::msg(format!("Unknown actor with id {}", actor_id))),
+        }
     }
 }

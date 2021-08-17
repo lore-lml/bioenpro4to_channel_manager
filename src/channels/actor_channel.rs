@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct DailyChannelMsg{
+pub struct DailyChannelMsg{
     address: ChannelInfo,
     category: String,
     actor_id: String,
@@ -226,5 +226,29 @@ impl DailyChannelManager {
 
     pub fn channel_info(&self) -> ChannelInfo{
         self.daily_channel.lock().unwrap().channel_info()
+    }
+}
+
+impl ActorChannel{
+    pub fn daily_channels_info(&self) -> Vec<DailyChannelMsg>{
+        self.daily_channels.clone()
+    }
+
+    pub async fn daily_channel_info(&self, date: &str) -> anyhow::Result<Vec<String>>{
+        let daily_ch = self.daily_channels.iter()
+            .find(|ch| ch.creation_date() == date.to_string())
+            .map_or(
+                Err(anyhow::Error::msg(format!("Daily Channel in date {} doesn't exist", date))),
+                |ch| Ok(ch.clone())
+            )?;
+        let info = daily_ch.address();
+        let mut reader = create_reader(info.channel_id(), info.announce_id(), self.mainnet);
+        reader.attach().await?;
+        let msgs: Vec<(String, JsonPacket)> = reader.fetch_parsed_msgs(&None).await?;
+        let mut string_msgs: Vec<String> = vec![];
+        for (_, m) in msgs{
+            string_msgs.push(m.deserialize_public()?);
+        }
+        Ok(string_msgs)
     }
 }

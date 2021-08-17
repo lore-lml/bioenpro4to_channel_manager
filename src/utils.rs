@@ -23,3 +23,10 @@ pub fn timestamp_to_date_string(timestamp: i64, millis: bool) -> String{
     let date = timestamp_to_date(timestamp, millis);
     format!("{:02}/{:02}/{}", date.day(), date.month(), date.year())
 }
+
+pub fn check_date_format(date: &str) -> bool{
+    let re = regex::Regex::new(
+        r"^([0-2][0-9]|(3)[0-1])(/)(((0)[0-9])|((1)[0-2]))(/)\d{4}$"
+    ).unwrap();
+    re.is_match(date)
+}

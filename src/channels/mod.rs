@@ -3,8 +3,10 @@ use iota_streams_lib::channels::{ChannelWriter, ChannelReader};
 
 pub mod root_channel;
 mod category_channel;
-pub mod actor_channel;
+mod actor_channel;
 mod daily_channel;
+pub use category_channel::ActorChannelMsg as ActorChannelInfo;
+pub use actor_channel::DailyChannelMsg as DailyChannelInfo;
 
 #[derive(Debug, Clone)]
 pub enum Category{

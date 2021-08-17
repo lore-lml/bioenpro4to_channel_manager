@@ -16,3 +16,4 @@ iota_streams_lib = { git = "https://github.com/lore-lml/iota-streams-lib.git" }
 anyhow = { version = "1.0", default-features = false }
 serde = { version = "^1.0", features=["derive"] }
 chrono = "0.4.19"
+regex = "1.5.4"
