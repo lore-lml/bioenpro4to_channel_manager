@@ -246,7 +246,7 @@ impl ActorChannel{
         reader.attach().await?;
         let msgs = reader.fetch_raw_msgs().await;
         let mut string_msgs: Vec<String> = vec![];
-        for (_, p, m) in msgs{
+        for (_, p, _) in msgs{
             let packet = RawPacket::from_streams_response(&p, &p, &None)?;
             string_msgs.push(packet.deserialize_public()?);
         }
