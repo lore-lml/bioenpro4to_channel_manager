@@ -2,7 +2,7 @@ use crate::channels::daily_channel::DailyChannel;
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use crate::utils::{current_time_secs, timestamp_to_date, timestamp_to_date_string, hash_string};
 use chrono::Datelike;
-use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
+use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket, RawPacket};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
@@ -244,10 +244,11 @@ impl ActorChannel{
         let info = daily_ch.address();
         let mut reader = create_reader(info.channel_id(), info.announce_id(), self.mainnet);
         reader.attach().await?;
-        let msgs: Vec<(String, JsonPacket)> = reader.fetch_parsed_msgs(&None).await?;
+        let msgs = reader.fetch_raw_msgs().await;
         let mut string_msgs: Vec<String> = vec![];
-        for (_, m) in msgs{
-            string_msgs.push(m.deserialize_public()?);
+        for (_, p, m) in msgs{
+            let packet = RawPacket::from_streams_response(&p, &p, &None)?;
+            string_msgs.push(packet.deserialize_public()?);
         }
         Ok(string_msgs)
     }
