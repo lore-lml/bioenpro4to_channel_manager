@@ -109,6 +109,10 @@ impl MessageReader{
         }
         Ok(())
     }
+    
+    pub fn msgs(&self) -> &Vec<HashMap<String, Value>> {
+        &self.msgs
+    }
 }
 
 fn create_channel(mainnet: bool) -> ChannelWriter{
