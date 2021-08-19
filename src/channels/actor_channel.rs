@@ -18,22 +18,22 @@ pub struct DailyChannelMsg{
 
 #[allow(dead_code)]
 impl DailyChannelMsg{
-    pub (crate) fn new(address: ChannelInfo, category: Category, actor_id: &str, creation_timestamp: i64) -> Self {
+    pub fn new(address: ChannelInfo, category: Category, actor_id: &str, creation_timestamp: i64) -> Self {
         DailyChannelMsg { address, category: category.to_string(), actor_id: actor_id.to_lowercase(), creation_timestamp }
     }
-    pub (crate) fn address(&self) -> &ChannelInfo {
+    pub fn address(&self) -> &ChannelInfo {
         &self.address
     }
     pub (crate) fn category(&self) -> &str {
         &self.category
     }
-    pub (crate) fn actor_id(&self) -> &str {
+    pub fn actor_id(&self) -> &str {
         &self.actor_id
     }
-    pub (crate) fn creation_timestamp(&self) -> i64 {
+    pub fn creation_timestamp(&self) -> i64 {
         self.creation_timestamp
     }
-    pub (crate) fn creation_date(&self) -> String{
+    pub fn creation_date(&self) -> String{
         timestamp_to_date_string(self.creation_timestamp, false)
     }
     pub (crate) fn print_nested_channel_info(&self){
