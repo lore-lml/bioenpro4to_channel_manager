@@ -24,7 +24,7 @@ impl DailyChannelMsg{
     pub fn address(&self) -> &ChannelInfo {
         &self.address
     }
-    pub (crate) fn category(&self) -> &str {
+    pub fn category(&self) -> &str {
         &self.category
     }
     pub fn actor_id(&self) -> &str {
