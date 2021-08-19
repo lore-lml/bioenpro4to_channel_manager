@@ -7,6 +7,9 @@ mod actor_channel;
 mod daily_channel;
 pub use category_channel::ActorChannelMsg as ActorChannelInfo;
 pub use actor_channel::DailyChannelMsg as DailyChannelInfo;
+use std::collections::HashMap;
+use serde_json::Value;
+use iota_streams_lib::payload::payload_serializers::RawPacket;
 
 #[derive(Debug, Clone)]
 pub enum Category{
@@ -81,6 +84,30 @@ impl ChannelInfo{
     }
     pub fn explorer_url(&self) -> String{
         format!("https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.channel_id, self.announce_id)
+    }
+}
+
+pub struct MessageReader{
+    reader: ChannelReader,
+    msgs: Vec<HashMap<String, Value>>,
+}
+
+impl MessageReader{
+    pub async fn new(channel_info: &ChannelInfo, mainnet: bool) -> anyhow::Result<Self> {
+        let mut reader = create_reader(channel_info.channel_id(), channel_info.announce_id(), mainnet);
+        reader.attach().await?;
+        let mut mr = MessageReader { reader, msgs: vec![] };
+        mr.read_messages().await?;
+        Ok(mr)
+    }
+
+    pub async fn read_messages(&mut self) -> anyhow::Result<()>{
+        let msgs = self.reader.fetch_raw_msgs().await;
+        for (_, p, _) in msgs{
+            let packet = RawPacket::from_streams_response(&p, &vec![], &None)?;
+            self.msgs.push(packet.deserialize_public()?);
+        }
+        Ok(())
     }
 }
 
