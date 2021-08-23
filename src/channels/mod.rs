@@ -9,7 +9,8 @@ pub use category_channel::ActorChannelMsg as ActorChannelInfo;
 pub use actor_channel::DailyChannelMsg as DailyChannelInfo;
 use std::collections::HashMap;
 use serde_json::Value;
-use iota_streams_lib::payload::payload_serializers::{RawPacket, JsonPacket};
+use iota_streams_lib::payload::payload_serializers::JsonPacket;
+use crate::utils::current_time_secs;
 
 #[derive(Debug, Clone)]
 pub enum Category{
@@ -90,19 +91,23 @@ impl ChannelInfo{
 pub struct MessageReader{
     reader: ChannelReader,
     msgs: Vec<HashMap<String, Value>>,
+    last_update: i64,
 }
 
 impl MessageReader{
     pub async fn new(channel_info: &ChannelInfo, mainnet: bool) -> anyhow::Result<Self> {
         let mut reader = create_reader(channel_info.channel_id(), channel_info.announce_id(), mainnet);
         reader.attach().await?;
-        let mut mr = MessageReader { reader, msgs: vec![] };
+        let mut mr = MessageReader { reader, last_update: current_time_secs(),msgs: vec![] };
         mr.read_messages().await?;
         Ok(mr)
     }
 
     pub async fn read_messages(&mut self) -> anyhow::Result<()>{
         let msgs = self.reader.fetch_raw_msgs().await;
+        if msgs.len() > 0{
+            self.last_update = current_time_secs();
+        }
         for (_, p, _) in msgs{
             let packet = JsonPacket::from_streams_response(&p, &vec![], &None)?;
             self.msgs.push(packet.deserialize_public()?);
@@ -112,6 +117,10 @@ impl MessageReader{
     
     pub fn msgs(&self) -> &Vec<HashMap<String, Value>> {
         &self.msgs
+    }
+
+    pub fn last_updates_minutes_ago(&self) -> i64{
+        (current_time_secs() - self.last_update) / 60
     }
 }
 
