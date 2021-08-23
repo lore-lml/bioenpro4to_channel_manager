@@ -2,7 +2,7 @@ use crate::channels::daily_channel::DailyChannel;
 use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
 use crate::utils::{current_time_secs, timestamp_to_date, timestamp_to_date_string, hash_string};
 use chrono::Datelike;
-use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket, RawPacket};
+use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
@@ -232,24 +232,5 @@ impl DailyChannelManager {
 impl ActorChannel{
     pub fn daily_channels_info(&self) -> Vec<DailyChannelMsg>{
         self.daily_channels.clone()
-    }
-
-    pub async fn daily_channel_info(&self, date: &str) -> anyhow::Result<Vec<String>>{
-        let daily_ch = self.daily_channels.iter()
-            .find(|ch| ch.creation_date() == date.to_string())
-            .map_or(
-                Err(anyhow::Error::msg(format!("Daily Channel in date {} doesn't exist", date))),
-                |ch| Ok(ch.clone())
-            )?;
-        let info = daily_ch.address();
-        let mut reader = create_reader(info.channel_id(), info.announce_id(), self.mainnet);
-        reader.attach().await?;
-        let msgs = reader.fetch_raw_msgs().await;
-        let mut string_msgs: Vec<String> = vec![];
-        for (_, p, _) in msgs{
-            let packet = RawPacket::from_streams_response(&p, &p, &None)?;
-            string_msgs.push(packet.deserialize_public()?);
-        }
-        Ok(string_msgs)
     }
 }

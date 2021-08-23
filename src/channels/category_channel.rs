@@ -166,14 +166,4 @@ impl CategoryChannel {
             .find(|a| a.actor_id().to_lowercase() == actor_id.to_lowercase())
             .map_or(vec![], |a| a.daily_channels_info())
     }
-
-    pub async fn daily_channel_info(&self, actor_id: &str, date: &str) -> anyhow::Result<Vec<String>>{
-        let actor_ch = self.actors.iter()
-            .find(|a| a.actor_id().to_lowercase() == actor_id.to_lowercase());
-
-        match actor_ch{
-            Some(ch) => ch.daily_channel_info(date).await,
-            None => Err(anyhow::Error::msg(format!("Unknown actor with id {}", actor_id))),
-        }
-    }
 }

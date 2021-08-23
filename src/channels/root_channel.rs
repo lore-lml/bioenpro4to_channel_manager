@@ -5,7 +5,6 @@ use serde::{Serialize, Deserialize};
 use crate::channels::actor_channel::{DailyChannelManager, DailyChannelMsg};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
-use crate::utils::check_date_format;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
@@ -215,14 +214,5 @@ impl RootChannel{
         let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
         cat.lock().unwrap().channels_of_actor(actor_id)
     }
-
-    pub async fn daily_channel_info(&self, category: Category, actor_id: &str, date: &str) -> anyhow::Result<Vec<String>>{
-        if !check_date_format(date){
-            return Err(anyhow::Error::msg("Invalid Date format"));
-        }
-        let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
-        cat.lock().unwrap().daily_channel_info(actor_id, date).await
-    }
-
 
 }

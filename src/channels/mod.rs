@@ -119,8 +119,8 @@ impl MessageReader{
         &self.msgs
     }
 
-    pub fn last_updates_minutes_ago(&self) -> i64{
-        (current_time_secs() - self.last_update) / 60
+    pub fn last_updates_seconds_ago(&self) -> i64{
+        current_time_secs() - self.last_update
     }
 }
 
