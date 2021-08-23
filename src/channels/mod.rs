@@ -9,7 +9,7 @@ pub use category_channel::ActorChannelMsg as ActorChannelInfo;
 pub use actor_channel::DailyChannelMsg as DailyChannelInfo;
 use std::collections::HashMap;
 use serde_json::Value;
-use iota_streams_lib::payload::payload_serializers::RawPacket;
+use iota_streams_lib::payload::payload_serializers::{RawPacket, JsonPacket};
 
 #[derive(Debug, Clone)]
 pub enum Category{
@@ -104,7 +104,7 @@ impl MessageReader{
     pub async fn read_messages(&mut self) -> anyhow::Result<()>{
         let msgs = self.reader.fetch_raw_msgs().await;
         for (_, p, _) in msgs{
-            let packet = RawPacket::from_streams_response(&p, &vec![], &None)?;
+            let packet = JsonPacket::from_streams_response(&p, &vec![], &None)?;
             self.msgs.push(packet.deserialize_public()?);
         }
         Ok(())
