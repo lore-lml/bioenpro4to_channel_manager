@@ -27,7 +27,7 @@ impl ActorChannelMsg{
     }
 }
 
-pub struct CategoryChannel{
+pub (crate) struct CategoryChannel{
     category: Category,
     channel: ChannelWriter,
     actors: Vec<ActorChannel>,
@@ -36,12 +36,12 @@ pub struct CategoryChannel{
 
 #[allow(dead_code)]
 impl CategoryChannel {
-    pub fn new(category: Category, mainnet: bool) -> Self {
+    pub (crate) fn new(category: Category, mainnet: bool) -> Self {
         let channel = create_channel(mainnet);
         CategoryChannel { category, channel, actors: vec![], mainnet }
     }
 
-    pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, mainnet: bool) -> anyhow::Result<Self>{
+    pub (crate) async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, mainnet: bool) -> anyhow::Result<Self>{
         let node = if mainnet{
             Some("https://chrysalis-nodes.iota.cafe/")
         }else{
@@ -63,16 +63,16 @@ impl CategoryChannel {
         Ok( CategoryChannel{ category, channel, actors, mainnet } )
     }
 
-    pub async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
+    pub (crate) async fn open(&mut self, channel_psw: &str) -> anyhow::Result<ChannelInfo> {
         let info = self.channel.open_and_save(channel_psw).await?;
         Ok(ChannelInfo::new(info.0, info.1))
     }
 
-    pub fn category(&self) -> &Category {
+    pub (crate) fn category(&self) -> &Category {
         &self.category
     }
 
-    pub async fn new_daily_actor_channel(&mut self, actor_id: &str, root_psw: &str, state_psw: &str,
+    pub (crate) async fn new_daily_actor_channel(&mut self, actor_id: &str, root_psw: &str, state_psw: &str,
                                                    day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         if !exist{
@@ -84,7 +84,7 @@ impl CategoryChannel {
             .new_daily_actor_channel(state_psw, day, month, year).await
     }
 
-    pub async fn get_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
+    pub (crate) async fn get_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
                                          day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
 
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
@@ -97,12 +97,24 @@ impl CategoryChannel {
             .get_daily_channel_in_date(state_psw, day, month, year).await
     }
 
-    pub fn channel_info(&self) -> ChannelInfo{
+    pub (crate) async fn serialize_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
+                                                       day: u16, month: u16, year: u16) -> anyhow::Result<Vec<u8>>{
+        let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
+        if !exist{
+            return Err(anyhow::Error::msg(format!("Actor {} doesn't exist yet", actor_id)));
+        }
+
+        self.actors.iter_mut()
+            .find(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase()).unwrap()
+            .serialize_daily_channel(state_psw, day, month, year).await
+    }
+
+    pub (crate) fn channel_info(&self) -> ChannelInfo{
         let info = self.channel.channel_address();
         ChannelInfo::new(info.0, info.1)
     }
 
-    pub fn print_nested_channel_info(&self){
+    pub (crate) fn print_nested_channel_info(&self){
         let info = self.channel_info();
         let category = match self.category{
             Category::Trucks => "Trucks",

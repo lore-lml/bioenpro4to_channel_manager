@@ -3,6 +3,7 @@ use bioenpro4to_channel_manager::channels::root_channel::RootChannel;
 use bioenpro4to_channel_manager::channels::{Category, ChannelInfo};
 use bioenpro4to_channel_manager::utils::{create_encryption_key, create_encryption_nonce, current_time_secs};
 use serde::{Serialize, Deserialize};
+use bioenpro4to_channel_manager::channels::daily_channel::DailyChannel;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Message{
@@ -28,7 +29,11 @@ async fn test_create_nested_channels(state_psw: &str, mainnet: bool, key_nonce: 
     root.new_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 25, 5, 2021).await?;
     let mut scale_ch = root.new_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 28, 5, 2021).await?;
 
-    let mut daily_ch = root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
+    root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
+    let state = root.serialize_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
+    let mut daily_ch = DailyChannel::import_from_bytes(&state, state_psw).await?;
+
+
     let public = Message::new("PUBLIC MESSAGE");
     let private = Message::new("PRIVATE MESSAGE");
     daily_ch.send_raw_packet(public.to_json()?, private.to_json()?, key_nonce).await?;

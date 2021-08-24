@@ -4,7 +4,7 @@ use iota_streams_lib::channels::{ChannelWriter, ChannelReader};
 pub mod root_channel;
 mod category_channel;
 mod actor_channel;
-mod daily_channel;
+pub mod daily_channel;
 pub use category_channel::ActorChannelMsg as ActorChannelInfo;
 pub use actor_channel::DailyChannelMsg as DailyChannelInfo;
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ use serde_json::Value;
 use iota_streams_lib::payload::payload_serializers::JsonPacket;
 use crate::utils::current_time_secs;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Category{
     Trucks,
     Scales,
@@ -125,15 +125,20 @@ impl MessageReader{
 }
 
 fn create_channel(mainnet: bool) -> ChannelWriter{
-    if mainnet{
-        return ChannelWriter::builder().node("https://chrysalis-nodes.iota.cafe/").build();
-    }
-    ChannelWriter::builder().build()
+    ChannelWriter::builder()
+        .node(&node_url(mainnet))
+        .build()
 }
 
 fn create_reader(channel_id: &str, announce_id: &str, mainnet:bool) -> ChannelReader{
+    ChannelReader::builder()
+        .node(&node_url(mainnet))
+        .build(channel_id, announce_id)
+}
+
+fn node_url(mainnet: bool) -> String{
     if mainnet{
-        return ChannelReader::builder().node("https://chrysalis-nodes.iota.cafe/").build(channel_id, announce_id);
+        return "https://chrysalis-nodes.iota.cafe/".to_string();
     }
-    ChannelReader::builder().build(channel_id, announce_id)
+    "https://api.lb-0.testnet.chrysalis2.com".to_string()
 }
