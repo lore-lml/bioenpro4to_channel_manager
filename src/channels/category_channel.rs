@@ -98,7 +98,7 @@ impl CategoryChannel {
     }
 
     pub (crate) async fn serialize_daily_actor_channel(&mut self, actor_id: &str, state_psw: &str,
-                                                       day: u16, month: u16, year: u16) -> anyhow::Result<Vec<u8>>{
+                                                       day: u16, month: u16, year: u16) -> anyhow::Result<String>{
         let exist = self.actors.iter().any(|ch| ch.actor_id().to_lowercase() == actor_id.to_lowercase());
         if !exist{
             return Err(anyhow::Error::msg(format!("Actor {} doesn't exist yet", actor_id)));

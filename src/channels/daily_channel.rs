@@ -51,7 +51,7 @@ impl DailyChannel{
         Ok(ChannelInfo::new(info.0, info.1))
     }
 
-    pub (crate) fn export_to_bytes(&self, state_psw: &str) -> anyhow::Result<Vec<u8>>{
+    pub (crate) fn export_to_base64(&self, state_psw: &str) -> anyhow::Result<String>{
         let state = DailyChannelState::new(state_psw, &self)?;
         state.encrypt()
     }
@@ -75,9 +75,12 @@ impl DailyChannel{
         ChannelInfo::new(info.0, info.1)
     }
 
-    pub async fn import_from_bytes(state: &[u8], state_psw: &str) -> anyhow::Result<Self>{
+    pub async fn import_from_base64(state: &str, state_psw: &str) -> anyhow::Result<Self>{
+        println!("Trying to import daily channel from base64...");
         let state = DailyChannelState::decrypt(state, state_psw)?;
-        state.to_daily_channel().await
+        let ch = state.to_daily_channel().await?;
+        println!("  ...Daily Channel Import complete");
+        Ok(ch)
     }
 }
 
@@ -102,7 +105,7 @@ impl DailyChannelState {
         Ok(DailyChannelState{channel_state, category, actor_id, creation_timestamp, state_psw, mainnet})
     }
 
-    pub fn encrypt(&self) -> anyhow::Result<Vec<u8>>{
+    pub fn encrypt(&self) -> anyhow::Result<String>{
         let psw = &self.state_psw;
         let bytes = bincode::serialize(&self)?;
 
@@ -115,11 +118,11 @@ impl DailyChannelState {
             .map_err(|_| anyhow::Error::msg("Error during state encryption"))?;
 
         let base64 = encode_config(&enc, URL_SAFE_NO_PAD);
-        Ok(base64.as_bytes().to_vec())
+        Ok(base64)
     }
 
-    pub fn decrypt(input: &[u8], psw: &str) -> anyhow::Result<Self>{
-        let bytes = decode_config(input, URL_SAFE_NO_PAD)?;
+    pub fn decrypt(base64: &str, psw: &str) -> anyhow::Result<Self>{
+        let bytes = decode_config(&base64.as_bytes().to_vec(), URL_SAFE_NO_PAD)?;
 
         let (key, nonce) = key_nonce(psw);
         let key = GenericArray::from_slice(&key[..]);

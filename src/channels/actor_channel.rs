@@ -159,9 +159,9 @@ impl ActorChannel{
         self.get_daily_channel_in_date(state_psw, date.day() as u16, date.month() as u16, date.year() as u16).await
     }
 
-    pub (crate) async fn serialize_daily_channel(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<Vec<u8>>{
+    pub (crate) async fn serialize_daily_channel(&mut self, state_psw: &str, day: u16, month: u16, year: u16) -> anyhow::Result<String>{
         let daily_ch = self.get_daily_channel_in_date(state_psw, day, month, year).await?;
-        daily_ch.export_to_bytes(state_psw)
+        daily_ch.export_to_base64(state_psw)
     }
 
     pub (crate) fn actor_id(&self) -> &str {
@@ -216,8 +216,8 @@ impl DailyChannelManager {
         DailyChannelManager { daily_channel }
     }
 
-    fn export_to_bytes(&self, state_psw: &str) -> anyhow::Result<Vec<u8>>{
-        self.daily_channel.lock().unwrap().export_to_bytes(state_psw)
+    fn export_to_base64(&self, state_psw: &str) -> anyhow::Result<String>{
+        self.daily_channel.lock().unwrap().export_to_base64(state_psw)
     }
 
     pub async fn send_raw_packet(&mut self, p_data: Vec<u8>, m_data: Vec<u8>, key_nonce: Option<([u8;32], [u8;24])>) -> anyhow::Result<String>{

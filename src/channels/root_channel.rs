@@ -117,7 +117,7 @@ impl RootChannel{
     }
 
     pub async fn serialize_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
-                                               day: u16, month: u16, year: u16) -> anyhow::Result<Vec<u8>>{
+                                               day: u16, month: u16, year: u16) -> anyhow::Result<String>{
         println!("Serializing daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
         let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
         let res = category.lock().unwrap().serialize_daily_actor_channel(actor_id, state_psw, day, month, year).await;

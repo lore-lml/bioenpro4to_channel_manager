@@ -31,8 +31,7 @@ async fn test_create_nested_channels(state_psw: &str, mainnet: bool, key_nonce: 
 
     root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
     let state = root.serialize_daily_actor_channel(Category::Trucks, "XASD", state_psw, 25, 5, 2021).await?;
-    let mut daily_ch = DailyChannel::import_from_bytes(&state, state_psw).await?;
-
+    let mut daily_ch = DailyChannel::import_from_base64(&state, state_psw).await?;
 
     let public = Message::new("PUBLIC MESSAGE");
     let private = Message::new("PRIVATE MESSAGE");
