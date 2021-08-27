@@ -36,11 +36,11 @@ impl DailyChannelMsg{
     pub fn creation_date(&self) -> String{
         timestamp_to_date_string(self.creation_timestamp, false)
     }
-    pub (crate) fn print_nested_channel_info(&self){
+    pub (crate) fn print_nested_channel_info(&self, mainnet: bool){
         if self.category == String::from("biocells"){
-            println!("        |--Day {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.creation_date(), self.address.channel_id, self.address.announce_id);
+            println!("        |--Day {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}?mainnet={}", self.creation_date(), self.address.channel_id, self.address.announce_id, mainnet);
         }else{
-            println!("|   |   |--Day {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.creation_date(), self.address.channel_id, self.address.announce_id);
+            println!("|   |   |--Day {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}?mainnet={}", self.creation_date(), self.address.channel_id, self.address.announce_id, mainnet);
         }
     }
 }
@@ -176,12 +176,12 @@ impl ActorChannel{
     pub (crate) fn print_nested_channel_info(&self){
         let info = self.channel_info();
         if self.category.is_biocells(){
-            println!("    |--Actor {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.actor_id, info.channel_id, info.announce_id);
+            println!("    |--Actor {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}?mainnet={}", self.actor_id, info.channel_id, info.announce_id, self.mainnet);
         }else{
-            println!("|   |--Actor {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.actor_id, info.channel_id, info.announce_id);
+            println!("|   |--Actor {} = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}?mainnet={}", self.actor_id, info.channel_id, info.announce_id, self.mainnet);
         }
 
-        self.daily_channels.iter().for_each(|ch| ch.print_nested_channel_info());
+        self.daily_channels.iter().for_each(|ch| ch.print_nested_channel_info(self.mainnet));
     }
 }
 

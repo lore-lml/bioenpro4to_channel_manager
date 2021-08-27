@@ -145,7 +145,7 @@ impl RootChannel{
     //
     pub fn print_nested_channel_info(&self){
         let info = self.channel_info();
-        println!("\nRoot = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", info.channel_id, info.announce_id);
+        println!("\nRoot = https://streams-chrysalis-explorer.netlify.app/channel/{}:{}?mainnet={}", info.channel_id, info.announce_id, self.mainnet);
 
         self.categories[0].0.lock().unwrap().print_nested_channel_info();
         self.categories[1].0.lock().unwrap().print_nested_channel_info();
