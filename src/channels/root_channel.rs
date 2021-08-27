@@ -101,7 +101,7 @@ impl RootChannel{
     pub async fn new_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
                                          day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         println!("Trying creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
-        let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let category = &self.categories.iter_mut().find(|cat| category == cat.1).unwrap().0;
         let res = category.lock().unwrap().new_daily_actor_channel(actor_id, &self.psw, state_psw, day, month, year).await;
         println!("  Creation complete");
         res
@@ -110,7 +110,7 @@ impl RootChannel{
     pub async fn get_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
                                          day: u16, month: u16, year: u16) -> anyhow::Result<DailyChannelManager>{
         println!("Getting daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
-        let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let category = &self.categories.iter_mut().find(|cat| category == cat.1).unwrap().0;
         let res = category.lock().unwrap().get_daily_actor_channel(actor_id, state_psw, day, month, year).await;
         println!("  Getting complete");
         res
@@ -119,7 +119,7 @@ impl RootChannel{
     pub async fn serialize_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
                                                day: u16, month: u16, year: u16) -> anyhow::Result<String>{
         println!("Serializing daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
-        let category = &self.categories.iter_mut().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let category = &self.categories.iter_mut().find(|cat| category == cat.1).unwrap().0;
         let res = category.lock().unwrap().serialize_daily_actor_channel(actor_id, state_psw, day, month, year).await;
         println!("  Serializing complete");
         res
@@ -215,12 +215,12 @@ impl RootChannel {
 // Read APIs
 impl RootChannel{
     pub fn actors_of_category(&self, category: Category) -> Vec<ActorChannelMsg>{
-        let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let cat = &self.categories.iter().find(|cat| category == cat.1).unwrap().0;
         cat.lock().unwrap().actors_info()
     }
 
     pub fn channels_of_actor(&self, category: Category, actor_id: &str) -> Vec<DailyChannelMsg>{
-        let cat = &self.categories.iter().find(|cat| category.equals_to(&cat.1)).unwrap().0;
+        let cat = &self.categories.iter().find(|cat| category == cat.1).unwrap().0;
         cat.lock().unwrap().channels_of_actor(actor_id)
     }
 

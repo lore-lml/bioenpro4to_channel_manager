@@ -12,7 +12,7 @@ use serde_json::Value;
 use iota_streams_lib::payload::payload_serializers::JsonPacket;
 use crate::utils::current_time_secs;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum Category{
     Trucks,
     Scales,
@@ -21,31 +21,22 @@ pub enum Category{
 
 impl Category{
     pub fn is_trucks(&self) -> bool{
-        match self{
-            Category::Trucks => true,
-            _ => false
-        }
+        self == &Category::Trucks
     }
     pub fn is_scales(&self) -> bool{
-        match self{
-            Category::Scales => true,
-            _ => false
-        }
+        self == &Category::Scales
     }
     pub fn is_biocells(&self) -> bool{
-        match self{
-            Category::BioCells => true,
-            _ => false
-        }
+        self == &Category::BioCells
     }
-    pub fn equals_to(&self, other: &Category) -> bool{
+    /*pub fn equals_to(&self, other: &Category) -> bool{
         match (self, other) {
             (Category::Trucks, Category::Trucks) => true,
             (Category::Scales, Category::Scales) => true,
             (Category::BioCells, Category::BioCells) => true,
             (_, _) => false
         }
-    }
+    }*/
 
     pub fn to_string(&self) -> String{
         match self{
