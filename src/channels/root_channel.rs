@@ -5,6 +5,7 @@ use serde::{Serialize, Deserialize};
 use crate::channels::actor_channel::{DailyChannelManager, DailyChannelMsg};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
+use anyhow::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{
@@ -103,8 +104,16 @@ impl RootChannel{
         println!("Trying creating daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
         let category = &self.categories.iter_mut().find(|cat| category == cat.1).unwrap().0;
         let res = category.lock().unwrap().new_daily_actor_channel(actor_id, &self.psw, state_psw, day, month, year).await;
-        println!("  Creation complete");
-        res
+        match res{
+            Ok(res) => {
+                println!("  Creation Complete");
+                Ok(res)
+            },
+            Err(err) => {
+                eprintln!("{}", err.to_string());
+                Err(err)
+            }
+        }
     }
 
     pub async fn get_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
@@ -112,8 +121,16 @@ impl RootChannel{
         println!("Getting daily channel: ({}, {}, {:02}/{:02}/{})", category.to_string(), actor_id, day, month, year);
         let category = &self.categories.iter_mut().find(|cat| category == cat.1).unwrap().0;
         let res = category.lock().unwrap().get_daily_actor_channel(actor_id, state_psw, day, month, year).await;
-        println!("  Getting complete");
-        res
+        match res{
+            Ok(res) => {
+                println!("  Getting Complete");
+                Ok(res)
+            },
+            Err(err) => {
+                eprintln!("{}", err.to_string());
+                Err(err)
+            }
+        }
     }
 
     pub async fn serialize_daily_actor_channel(&mut self, category: Category, actor_id: &str, state_psw: &str,
