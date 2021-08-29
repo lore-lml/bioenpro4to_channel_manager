@@ -75,7 +75,10 @@ impl ChannelInfo{
         &self.announce_id
     }
     pub fn explorer_url(&self) -> String{
-        format!("https://streams-chrysalis-explorer.netlify.app/channel/{}:{}", self.channel_id, self.announce_id)
+        format!("https://streams-chrysalis-explorer.netlify.app/channel/{}", self.to_string())
+    }
+    pub fn to_string(&self) -> String{
+        format!("{}:{}", self.channel_id, self.announce_id)
     }
 }
 
