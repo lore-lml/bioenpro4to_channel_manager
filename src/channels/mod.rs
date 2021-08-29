@@ -50,7 +50,7 @@ impl Category{
         let category = category.to_lowercase();
         match category.as_str(){
             "trucks" => Some(Category::Trucks),
-            "scales" => Some(Category::Scales),
+            "weighing_scales" => Some(Category::Scales),
             "biocells" => Some(Category::BioCells),
             _ => None
         }
