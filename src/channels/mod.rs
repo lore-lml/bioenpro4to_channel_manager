@@ -4,6 +4,7 @@ use iota_streams_lib::channels::{ChannelWriter, ChannelReader};
 pub mod root_channel;
 mod category_channel;
 mod actor_channel;
+pub use actor_channel::DailyChannelManager;
 pub mod daily_channel;
 pub use category_channel::ActorChannelMsg as ActorChannelInfo;
 pub use actor_channel::DailyChannelMsg as DailyChannelInfo;

@@ -110,7 +110,7 @@ impl RootChannel{
                 Ok(res)
             },
             Err(err) => {
-                eprintln!("{}", err.to_string());
+                eprintln!("  {}", err.to_string());
                 Err(err)
             }
         }
