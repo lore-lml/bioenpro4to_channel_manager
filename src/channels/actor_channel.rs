@@ -207,6 +207,7 @@ impl ActorChannel{
     }
 }
 
+#[derive(Clone)]
 pub struct DailyChannelManager{
     daily_channel: Arc<Mutex<DailyChannel>>,
 }
@@ -214,6 +215,11 @@ pub struct DailyChannelManager{
 impl DailyChannelManager {
     fn new(daily_channel: Arc<Mutex<DailyChannel>>) -> Self {
         DailyChannelManager { daily_channel }
+    }
+
+    pub async fn import_from_base64(state: &str, state_psw: &str) -> anyhow::Result<Self>{
+        let daily_ch = DailyChannel::import_from_base64(state, state_psw).await?;
+        Ok(DailyChannelManager::new(Arc::new(Mutex::new(daily_ch))))
     }
 
     fn export_to_base64(&self, state_psw: &str) -> anyhow::Result<String>{

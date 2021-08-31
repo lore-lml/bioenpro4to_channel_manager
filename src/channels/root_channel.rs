@@ -5,7 +5,6 @@ use serde::{Serialize, Deserialize};
 use crate::channels::actor_channel::{DailyChannelManager, DailyChannelMsg};
 use iota_streams_lib::channels::ChannelWriter;
 use std::sync::{Arc, Mutex};
-use anyhow::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CategoryChannelsInfo{

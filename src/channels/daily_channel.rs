@@ -9,7 +9,7 @@ use chacha20poly1305::XChaCha20Poly1305;
 use base64::{encode_config, URL_SAFE_NO_PAD, decode_config};
 
 #[allow(dead_code)]
-pub struct DailyChannel{
+pub (crate) struct DailyChannel{
     category: Category,
     actor_id: String,
     channel: ChannelWriter,
@@ -62,20 +62,20 @@ impl DailyChannel{
         self.channel.send_signed_raw_data(p_data, m_data, key_nonce).await
     }
 
-    pub fn creation_timestamp(&self) -> i64 {
+    pub (crate) fn creation_timestamp(&self) -> i64 {
         self.creation_timestamp
     }
 
-    pub fn creation_date(&self) -> String{
+    pub (crate) fn creation_date(&self) -> String{
         timestamp_to_date_string(self.creation_timestamp, false)
     }
 
-    pub fn channel_info(&self) -> ChannelInfo{
+    pub (crate) fn channel_info(&self) -> ChannelInfo{
         let info = self.channel.channel_address();
         ChannelInfo::new(info.0, info.1)
     }
 
-    pub async fn import_from_base64(state: &str, state_psw: &str) -> anyhow::Result<Self>{
+    pub (crate) async fn import_from_base64(state: &str, state_psw: &str) -> anyhow::Result<Self>{
         println!("Trying to import daily channel from base64...");
         let state = DailyChannelState::decrypt(state, state_psw)?;
         let ch = state.to_daily_channel().await?;
