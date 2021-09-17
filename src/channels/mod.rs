@@ -135,5 +135,5 @@ fn node_url(mainnet: bool) -> String{
     if mainnet{
         return "https://chrysalis-nodes.iota.cafe/".to_string();
     }
-    "https://api.lb-0.testnet.chrysalis2.com".to_string()
+    "https://api.lb-0.h.chrysalis-devnet.iota.cafe/".to_string()
 }
