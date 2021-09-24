@@ -37,12 +37,8 @@ impl DailyChannel{
 
     pub (crate) async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category,
                                     actor_id: &str, creation_timestamp: i64, mainnet: bool) -> anyhow::Result<Self>{
-        let node = if mainnet{
-            Some("https://chrysalis-nodes.iota.cafe/")
-        }else{
-            None
-        };
-        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, node, None).await?;
+        let node_url = node_url(mainnet);
+        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, Some(node_url.as_str()), None).await?;
         Ok(DailyChannel{ category, actor_id: actor_id.to_lowercase(), channel, creation_timestamp, mainnet})
     }
 

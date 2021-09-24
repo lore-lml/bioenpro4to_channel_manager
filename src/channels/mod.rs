@@ -131,7 +131,7 @@ fn create_reader(channel_id: &str, announce_id: &str, mainnet:bool) -> ChannelRe
         .build(channel_id, announce_id)
 }
 
-fn node_url(mainnet: bool) -> String{
+pub fn node_url(mainnet: bool) -> String{
     if mainnet{
         return "https://chrysalis-nodes.iota.cafe/".to_string();
     }

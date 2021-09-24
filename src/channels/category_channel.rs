@@ -1,4 +1,4 @@
-use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
+use crate::channels::{Category, create_channel, ChannelInfo, create_reader, node_url};
 use crate::channels::actor_channel::{ActorChannel, DailyChannelManager, DailyChannelMsg};
 use serde::{Serialize, Deserialize};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
@@ -42,12 +42,8 @@ impl CategoryChannel {
     }
 
     pub (crate) async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, category: Category, mainnet: bool) -> anyhow::Result<Self>{
-        let node = if mainnet{
-            Some("https://chrysalis-nodes.iota.cafe/")
-        }else{
-            None
-        };
-        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, node, None).await?;
+        let node_url = node_url(mainnet);
+        let channel = ChannelWriter::import_from_tangle(channel_id, announce_id, state_psw, Some(node_url.as_str()), None).await?;
         let actors_info = CategoryChannel::read_actors_channels_info(channel_id, announce_id, mainnet).await?;
         let mut actors = vec![];
         for a in actors_info {

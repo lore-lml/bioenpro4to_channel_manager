@@ -1,5 +1,5 @@
 use crate::channels::category_channel::{CategoryChannel, ActorChannelMsg};
-use crate::channels::{Category, create_channel, ChannelInfo, create_reader};
+use crate::channels::{Category, create_channel, ChannelInfo, create_reader, node_url};
 use iota_streams_lib::payload::payload_serializers::{JsonPacketBuilder, JsonPacket};
 use serde::{Serialize, Deserialize};
 use crate::channels::actor_channel::{DailyChannelManager, DailyChannelMsg};
@@ -43,17 +43,13 @@ impl RootChannel{
     // Restore the entire nested architecture giving the address of the root channel and the password previously used for the encryption of the state
     //
     pub async fn import_from_tangle(channel_id: &str, announce_id: &str, state_psw: &str, mainnet: bool) -> anyhow::Result<Self>{
-        let node = if mainnet{
-            Some("https://chrysalis-nodes.iota.cafe/")
-        }else{
-            None
-        };
+        let node_url = node_url(mainnet);
         println!("Importing tree");
         let root = ChannelWriter::import_from_tangle(
             channel_id,
             announce_id,
             state_psw,
-            node,
+            Some(node_url.as_str()),
             None
         ).await?;
         println!("  Root imported");

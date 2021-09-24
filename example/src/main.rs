@@ -23,13 +23,13 @@ async fn test_create_nested_channels(state_psw: &str, mainnet: bool, key_nonce: 
     let mut root = RootChannel::new(mainnet);
     let info = root.open(state_psw).await?;
     let state_psw = "psw2";
-    root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 29, 8, 2021).await?;
-    root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 28, 8, 2021).await?;
-    root.new_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 29, 8, 2021).await?;
-    let mut scale_ch = root.new_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 29, 8, 2021).await?;
+    root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 24, 9, 2021).await?;
+    root.new_daily_actor_channel(Category::Trucks, "XASD", state_psw, 23, 9, 2021).await?;
+    root.new_daily_actor_channel(Category::Trucks, "XASD2", state_psw, 24, 9, 2021).await?;
+    let mut scale_ch = root.new_daily_actor_channel(Category::Scales, "SCALE1", state_psw, 24, 9, 2021).await?;
 
-    root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 29, 8, 2021).await?;
-    let state = root.serialize_daily_actor_channel(Category::Trucks, "XASD", state_psw, 29, 8, 2021).await?;
+    root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 24, 9, 2021).await?;
+    let state = root.serialize_daily_actor_channel(Category::Trucks, "XASD", state_psw, 24, 9, 2021).await?;
     let mut daily_ch = DailyChannelManager::import_from_base64(&state, state_psw).await?;
 
     let public = Message::new("PUBLIC MESSAGE");
@@ -50,9 +50,9 @@ async fn test_restore_nested_channels(info: ChannelInfo, state_psw: &str, mainne
         mainnet
     ).await?;
     let state_psw = "psw2";
-    root.new_daily_actor_channel(Category::Trucks, "XASD3", state_psw, 29, 8, 2021).await?;
-    let mut daily_ch = root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 29, 8, 2021).await?;
-    let mut biocell_ch = root.new_daily_actor_channel(Category::BioCells, "BIO1", state_psw, 29, 8, 2021).await?;
+    root.new_daily_actor_channel(Category::Trucks, "XASD3", state_psw, 24, 9, 2021).await?;
+    let mut daily_ch = root.get_daily_actor_channel(Category::Trucks, "XASD", state_psw, 24, 9, 2021).await?;
+    let mut biocell_ch = root.new_daily_actor_channel(Category::BioCells, "BIO1", state_psw, 24, 9, 2021).await?;
     let public = Message::new("PUBLIC MESSAGE");
     let private = Message::new("PRIVATE MESSAGE");
     daily_ch.send_raw_packet(public.to_json()?, private.to_json()?, key_nonce).await?;
